@@ -1,6 +1,6 @@
 const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast';
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const BATCH_SIZE = 10;
+const MAX_RETRIES = 3;
 
 const cache = new Map();
 
@@ -13,13 +13,18 @@ export function uniqueLocations(tours) {
   return [...seen.values()];
 }
 
-async function fetchBatch(coords) {
+async function fetchBatch(coords, attempt = 1) {
   const url = `${WEATHER_URL}?latitude=${coords.map(c => c.lat).join(',')}` +
     `&longitude=${coords.map(c => c.lon).join(',')}` +
     `&daily=precipitation_probability_max,temperature_2m_max&timezone=auto&forecast_days=7`;
 
   const res = await fetch(url);
+  if (res.status === 429 && attempt < MAX_RETRIES) {
+    await new Promise(r => setTimeout(r, 1500 * attempt));
+    return fetchBatch(coords, attempt + 1);
+  }
   if (!res.ok) throw new Error(`Weather fetch failed (${res.status})`);
+
   const data = await res.json();
   if (!Array.isArray(data)) throw new Error('Weather response is not an array');
 
@@ -48,11 +53,7 @@ export async function fetchWeather(tours) {
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
 
-  const result = {};
-  for (let i = 0; i < coords.length; i += BATCH_SIZE) {
-    const batch = coords.slice(i, i + BATCH_SIZE);
-    Object.assign(result, await fetchBatch(batch));
-  }
+  const result = await fetchBatch(coords);
 
   cache.set(cacheKey, { at: Date.now(), data: result });
   return result;
