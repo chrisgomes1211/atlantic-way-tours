@@ -223,19 +223,29 @@ function addFlowArrow() {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// --- Backend API ---
+// --- Backend API (with timeouts so a sleeping Render instance fails fast) ---
+async function fetchWithTimeout(url, options, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function apiGet(path) {
-  const res = await fetch(BACKEND_URL + path);
+  const res = await fetchWithTimeout(BACKEND_URL + path, {}, 35000);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
 
 async function callBackend(messages) {
-  const res = await fetch(BACKEND_URL + '/api/chat', {
+  const res = await fetchWithTimeout(BACKEND_URL + '/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages })
-  });
+  }, 60000);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Backend error (' + res.status + ')');
@@ -260,7 +270,7 @@ async function fetchWeatherDirect(tours) {
     '?latitude=' + locs.map(l => l.latitude).join(',') +
     '&longitude=' + locs.map(l => l.longitude).join(',') +
     '&daily=precipitation_probability_max,temperature_2m_max&timezone=auto&forecast_days=7';
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url, {}, 35000);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();
   const map = {};
@@ -356,14 +366,17 @@ async function handleCommand(text) {
   try {
     // Step 1: live tours sheet
     addFlowStep('📊', 'Tours Sheet', 'Fetching live catalogue...', 'sheet');
+    const t0 = Date.now();
     await delay(120);
     addFlowArrow();
     try {
       const t = await apiGet('/api/tours');
       tours = t.tours;
-      addFlowStep('✅', 'Tours Sheet', t.count + ' tours · live', 'result');
+      const wake = Date.now() - t0 > 3000 ? ' (backend woke up)' : '';
+      addFlowStep('✅', 'Tours Sheet', t.count + ' tours · live' + wake, 'result');
     } catch (e) {
-      addFlowStep('❌', 'Tours Sheet', 'Backend unreachable', 'error');
+      addFlowStep('❌', 'Tours Sheet', 'Backend unreachable or slow', 'error');
+      showToast('⚠️ Backend waking up? Retry in a few seconds.');
       throw new Error('tours');
     }
     await delay(60);
@@ -427,7 +440,7 @@ async function handleCommand(text) {
     }
   } catch (e) {
     hideTyping();
-    addMsg('⚠️ Sorry — I can\'t reach the live data right now. Try again in a moment.', 'bot');
+    addMsg('⚠️ Sorry — the live data is taking too long to respond (free backend services sleep after ~15 min and need up to a minute to wake). Please wait a moment and send your message again.', 'bot');
     addFlowStep('❌', 'Error', 'Data sources unreachable', 'error');
   } finally {
     isSending = false;
