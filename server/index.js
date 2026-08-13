@@ -84,6 +84,19 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+async function buildLiveDataPackage() {
+  const tours = await fetchTours();
+  const weather = await fetchWeather(tours);
+  const byLoc = tours.map(t => {
+    const w = weather[`${t.latitude},${t.longitude}`];
+    const fc = w && w.forecast ? w.forecast.slice(0, 3).map(d =>
+      d.date + ' precip ' + d.precipitation_probability_max + '% max ' + d.temperature_2m_max + 'C'
+    ).join(' | ') : 'no forecast';
+    return `- [${t.id}] ${t.name} (${t.location}, ${t.type}, weather_sensitivity ${t.weather_sensitive}, EUR ${t.price_eur}, ${t.duration}, slots ${t.slots_available}/${t.capacity}, ${t.availability}${t.special_offer ? ', OFFER: ' + t.special_offer : ''}) — ${t.description} | Forecast: ${fc}`;
+  });
+  return `## LIVE DATA PACKAGE\nTours fetched live: ${tours.length}\nWeather locations: ${Object.keys(weather).length}\n\n${byLoc.join('\n')}`;
+}
+
 app.post('/api/orchestrate', async (req, res) => {
   try {
     let files;
@@ -100,6 +113,14 @@ app.post('/api/orchestrate', async (req, res) => {
     const kickoff = req.body?.prompt || 'Run the full analysis for Atlantic Way Tours: weather-driven revenue loss and the weather-adaptive tour recommender opportunity.';
     const log = [];
     let previousOutput = kickoff;
+
+    try {
+      const liveData = await buildLiveDataPackage();
+      previousOutput = kickoff + '\n\n' + liveData;
+      log.push({ step: 0, agent: 'live-data', status: 'done', detail: liveData.split('\n')[2] });
+    } catch (e) {
+      log.push({ step: 0, agent: 'live-data', status: 'error', detail: e.message.slice(0, 120) });
+    }
 
     for (const file of files) {
       const system = await readFile(path.join(AGENTS_DIR, file), 'utf8');
