@@ -169,6 +169,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 <script>
 // Change this to your deployed Render backend URL
 const BACKEND_URL = 'https://atlantic-way-tours-1.onrender.com';
+const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast';
 
 let isSending = false;
 
@@ -241,6 +242,41 @@ async function callBackend(messages) {
   }
   const data = await res.json();
   return data.reply;
+}
+
+// --- Direct Open-Meteo fallback (backend rate-limited? fetch from the browser) ---
+function uniqueLocations(tours) {
+  const seen = new Map();
+  for (const t of tours) {
+    const key = t.latitude + ',' + t.longitude;
+    if (!seen.has(key)) seen.set(key, t);
+  }
+  return [...seen.values()];
+}
+
+async function fetchWeatherDirect(tours) {
+  const locs = uniqueLocations(tours);
+  const url = WEATHER_URL +
+    '?latitude=' + locs.map(l => l.latitude).join(',') +
+    '&longitude=' + locs.map(l => l.longitude).join(',') +
+    '&daily=precipitation_probability_max,temperature_2m_max&timezone=auto&forecast_days=7';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  const map = {};
+  locs.forEach((l, i) => {
+    const d = data[i];
+    if (!d || !d.daily) return;
+    map[l.latitude + ',' + l.longitude] = {
+      timezone: d.timezone,
+      forecast: d.daily.time.map((day, j) => ({
+        date: day,
+        precipitation_probability_max: d.daily.precipitation_probability_max[j],
+        temperature_2m_max: d.daily.temperature_2m_max[j]
+      }))
+    };
+  });
+  return map;
 }
 
 // --- Context building: tours + weather per location ---
@@ -333,16 +369,22 @@ async function handleCommand(text) {
     await delay(60);
     addFlowArrow();
 
-    // Step 2: live weather
+    // Step 2: live weather (backend first, direct Open-Meteo from browser as fallback)
     addFlowStep('🌦️', 'Open-Meteo', 'Fetching forecasts...', 'weather');
     await delay(120);
     try {
       const w = await apiGet('/api/weather');
       weather = w.weather;
-      addFlowStep('✅', 'Open-Meteo', w.count + ' locations · live', 'result');
+      addFlowStep('✅', 'Open-Meteo', w.count + ' locations · via backend', 'result');
     } catch (e) {
-      addFlowStep('❌', 'Open-Meteo', 'Weather fetch failed', 'error');
-      weather = {};
+      addFlowStep('⚠️', 'Open-Meteo', 'Backend rate-limited — direct fetch', 'error');
+      try {
+        weather = await fetchWeatherDirect(tours);
+        addFlowStep('✅', 'Open-Meteo', Object.keys(weather).length + ' locations · direct', 'result');
+      } catch (e2) {
+        addFlowStep('❌', 'Open-Meteo', 'Weather unavailable', 'error');
+        weather = {};
+      }
     }
     await delay(60);
     addFlowArrow();
