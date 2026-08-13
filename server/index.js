@@ -5,6 +5,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchTours } from './tours.js';
+import { fetchWeather } from './weather.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -132,6 +133,20 @@ app.get('/api/tours', async (_req, res) => {
     res.json({ count: tours.length, source: 'live', tours });
   } catch (err) {
     res.status(502).json({ error: 'Sheet fetch failed', detail: err.message });
+  }
+});
+
+app.get('/api/weather', async (_req, res) => {
+  try {
+    const tours = await fetchTours();
+    const weather = await fetchWeather(tours);
+    res.json({
+      count: Object.keys(weather).length,
+      generatedAt: new Date().toISOString(),
+      weather
+    });
+  } catch (err) {
+    res.status(502).json({ error: 'Weather fetch failed', detail: err.message });
   }
 });
 
