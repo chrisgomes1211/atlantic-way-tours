@@ -473,9 +473,13 @@ document.querySelectorAll('.cmd').forEach(el => {
   });
 });
 
-// --- Welcome in flowviz ---
+// --- Welcome in flowviz + wake the backend so first message is fast ---
 (function init() {
   addFlowStep('🌊', 'Atlantic Way Tours', 'Ready — live data + AI', 'result');
+  fetchWithTimeout(BACKEND_URL + '/api/health', {}, 15000)
+    .then(r => r.json())
+    .then(d => addFlowStep('⚡', 'Backend', 'awake · ' + d.model, 'result'))
+    .catch(() => addFlowStep('💤', 'Backend', 'sleeping — wakes on first send', 'error'));
 })();
 </script>
 </body>
