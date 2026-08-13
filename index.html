@@ -271,6 +271,36 @@ function tourCard(t) {
     ).join('') + '</div></div>';
 }
 
+// ─── Browser-side weather (used when the backend's Open-Meteo is rate-limited) ───
+async function browserWeather() {
+  try {
+    const tours = (await (await fetchWithTimeout(BACKEND_URL + '/api/tours', {}, 30000)).json()).tours;
+    const seen = new Map();
+    for (const t of tours) { const k = t.latitude + ',' + t.longitude; if (!seen.has(k)) seen.set(k, t); }
+    const locs = [...seen.values()];
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' +
+      locs.map(l => l.latitude).join(',') + '&longitude=' + locs.map(l => l.longitude).join(',') +
+      '&daily=precipitation_probability_max,temperature_2m_max&timezone=auto&forecast_days=7';
+    const res = await fetchWithTimeout(url, {}, 30000);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const map = {};
+    locs.forEach((l, i) => {
+      const d = data[i];
+      if (d && d.daily) map[l.latitude + ',' + l.longitude] = {
+        forecast: d.daily.time.map((x, j) => ({
+          date: x,
+          precipitation_probability_max: d.daily.precipitation_probability_max[j],
+          temperature_2m_max: d.daily.temperature_2m_max[j]
+        }))
+      };
+    });
+    return map;
+  } catch {
+    return null;
+  }
+}
+
 // ═══ SEND HANDLER — live backend (structured cards + tools trace) ═══
 async function handleSend(text) {
   const query = text.trim();
@@ -278,10 +308,11 @@ async function handleSend(text) {
   addMsg(escapeHtml(query), 'user');
   showTyping();
   try {
+    const weather = await browserWeather();
     const res = await fetchWithTimeout(BACKEND_URL + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [{ role: 'user', content: query }] })
+      body: JSON.stringify({ messages: [{ role: 'user', content: query }], weather })
     }, 60000);
     if (!res.ok) throw new Error('backend returned HTTP ' + res.status);
     const data = await res.json();

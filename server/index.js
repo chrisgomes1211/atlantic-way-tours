@@ -67,7 +67,7 @@ function buildChatContext(tours, weather) {
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { messages } = req.body;
+    const { messages, weather: clientWeather } = req.body;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'messages array is required' });
     }
@@ -86,7 +86,19 @@ app.post('/api/chat', async (req, res) => {
       weather = await fetchWeather(tours.length ? tours : [{ latitude: 53.2707, longitude: -9.0568 }]);
       tools.push('weather_forecast');
     } catch (e) {
-      console.error('Weather unavailable:', e.message.slice(0, 100));
+      if (clientWeather && typeof clientWeather === 'object') {
+        const filtered = {};
+        for (const t of tours) {
+          const w = clientWeather[`${t.latitude},${t.longitude}`];
+          if (w && w.forecast) filtered[`${t.latitude},${t.longitude}`] = { forecast: w.forecast.slice(0, 4) };
+        }
+        if (Object.keys(filtered).length) {
+          weather = filtered;
+          tools.push('weather_forecast');
+          console.log('Used client-provided weather (' + Object.keys(filtered).length + ' locations)');
+        }
+      }
+      if (!tools.includes('weather_forecast')) console.error('Weather unavailable:', e.message.slice(0, 100));
     }
 
     const system = 'You are the weather-smart booking assistant for Atlantic Way Tours, a tour operator along Ireland\'s Wild Atlantic Way.\n\n' +
