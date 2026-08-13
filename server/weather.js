@@ -1,6 +1,6 @@
 const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast';
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 
 const cache = new Map();
 
@@ -23,7 +23,10 @@ async function fetchBatch(coords, attempt = 1) {
     await new Promise(r => setTimeout(r, 1500 * attempt));
     return fetchBatch(coords, attempt + 1);
   }
-  if (!res.ok) throw new Error(`Weather fetch failed (${res.status})`);
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 160);
+    throw new Error(`Weather fetch failed (${res.status}): ${body}`);
+  }
 
   const data = await res.json();
   if (!Array.isArray(data)) throw new Error('Weather response is not an array');
