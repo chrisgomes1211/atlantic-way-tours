@@ -4,6 +4,7 @@ import cors from 'cors';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fetchTours } from './tours.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -122,6 +123,15 @@ app.post('/api/orchestrate', async (req, res) => {
   } catch (err) {
     console.error('Orchestrate error:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/tours', async (_req, res) => {
+  try {
+    const tours = await fetchTours();
+    res.json({ count: tours.length, source: 'live', tours });
+  } catch (err) {
+    res.status(502).json({ error: 'Sheet fetch failed', detail: err.message });
   }
 });
 
