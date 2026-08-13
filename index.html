@@ -3,189 +3,219 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Atlantic Way Tours — Weather-Smart Assistant</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Atlantic Pathfinder — Wild Atlantic Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#eef6f7;--surface:#fff;--text:#0c2f3e;--text-muted:#5c7f8c;--text-dim:#8aa7b2;--accent:#0f766e;--accent-hover:#0b5f59;--accent-glow:rgba(15,118,110,0.1);--accent2:#052e45;--gold:#d9b36a;--gold-light:#f3e9d4;--sky:#0ea5c4;--orange:#fb923c;--border:#cfe3e6;--border-light:#e2eff1;--radius:12px;--radius-sm:8px;--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;--shadow:0 4px 24px rgba(0,0,0,0.06);--shadow-lg:0 12px 48px rgba(0,0,0,0.08)}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+:root{
+  --accent:#1B6B5A;          /* deep teal / Atlantic green */
+  --accent-2:#0f8f7a;
+  --accent-glow:rgba(27,107,90,.10);
+  --grad:linear-gradient(135deg,#115e6b,#1B6B5A 55%,#0f8f7a);
+  --grad-soft:linear-gradient(135deg,rgba(27,107,90,.08),rgba(15,143,122,.14));
+  --ink:#10342e;             /* deep slate-teal */
+  --ink-2:#173f38;
+  --header-grad:linear-gradient(135deg,#0d352d,#123f38 60%,#15513f);
+  --muted:#6c857e;
+  --dim:#94a8a2;
+  --sand:#f7f4ec;            /* soft off-white/sand */
+  --surface:#fff;
+  --line:#e6e1d5;
+  --line-soft:#f0ece2;
+  --chip-bg:#eef4f0;
+  --radius-lg:22px;
+  --radius-md:14px;
+  --radius-sm:10px;
+  --shadow:0 6px 28px rgba(16,52,46,.07);
+  --shadow-lg:0 14px 48px rgba(16,52,46,.10);
+  --serif:Georgia,'Times New Roman',serif;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+body{
+  font-family:var(--sans);color:var(--ink);min-height:100vh;
+  background-color:var(--sand);
+  background-image:repeating-linear-gradient(45deg,rgba(16,52,46,.018) 0 2px,transparent 2px 16px);
+  padding:28px 20px 92px; /* bottom space for fixed disclosure */
+}
 
-/* Header */
-.header{background:linear-gradient(135deg,var(--accent2),var(--accent) 70%,#0ea5c4);color:#fff;padding:22px 24px 16px;text-align:center;position:relative;overflow:hidden}
-.header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Cpath d='M40 8c8 10 20 16 32 16-12 0-24 6-32 16-8-10-20-16-32-16 12 0 24-6 32-16zm0 40c8 10 20 16 32 16-12 0-24 6-32 16-8-10-20-16-32-16 12 0 24-6 32-16z'/%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
-.header h1{font-size:1.5rem;font-weight:800;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:10px}
-.header h1 span{background:var(--gold);color:var(--accent2);padding:2px 10px;border-radius:6px;font-size:0.8rem}
-.header p{font-size:0.82rem;opacity:0.85;margin-top:3px;position:relative;z-index:1}
-.header-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:100px;font-size:0.68rem;margin-top:6px;position:relative;z-index:1}
+.app{display:grid;grid-template-columns:minmax(300px,35%) 1fr;gap:22px;max-width:1240px;margin:0 auto;align-items:start}
+@media(max-width:900px){.app{grid-template-columns:1fr;gap:16px}}
 
-/* Layout */
-.layout{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1200px;margin:20px auto;padding:0 20px}
-@media(max-width:860px){.layout{grid-template-columns:1fr;gap:16px}}
+/* ═══ LEFT PANEL — info sidebar ═══ */
+.sidebar{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:28px 26px;display:flex;flex-direction:column;gap:20px}
+.logo-tile{width:52px;height:52px;border-radius:15px;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;box-shadow:0 6px 18px rgba(17,94,107,.35)}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;color:var(--accent);text-transform:uppercase;margin-top:4px}
+h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem);line-height:1.12;color:var(--ink);letter-spacing:-.5px}
+.sidebar .desc{font-size:.86rem;line-height:1.65;color:var(--muted);margin-top:-8px}
 
-/* Panel */
-.panel{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
-.panel-header{padding:10px 14px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;font-size:0.75rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;flex-shrink:0}
-.panel-header .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
-.dot-teal{background:var(--accent)}
-.dot-gold{background:var(--gold)}
-.dot-sky{background:var(--sky)}
+.feature-card{display:flex;gap:13px;align-items:flex-start;background:var(--chip-bg);border:1px solid var(--line-soft);border-radius:var(--radius-md);padding:13px 14px}
+.feature-card .f-icon{width:36px;height:36px;border-radius:11px;background:var(--grad-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0}
+.feature-card .f-title{font-size:.85rem;font-weight:700;color:var(--ink)}
+.feature-card .f-text{font-size:.76rem;color:var(--muted);line-height:1.45;margin-top:2px}
 
-/* Chat */
-.chat{height:380px;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
-.chat::-webkit-scrollbar{width:4px}
-.chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.msg{max-width:88%;padding:10px 14px;border-radius:var(--radius-sm);font-size:0.82rem;line-height:1.5;animation:fadeIn 0.3s ease}
-.msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:2px}
-.msg.bot{background:var(--surface);border:1px solid var(--border-light);align-self:flex-start;border-bottom-left-radius:2px;font-size:0.8rem}
-.msg.bot strong{color:var(--accent2)}
-.msg.bot .offer-tag{display:inline-block;background:var(--gold);color:var(--accent2);font-size:0.62rem;padding:1px 7px;border-radius:4px;font-weight:700;margin:1px 0}
-.msg.bot .rain-warn{display:block;background:rgba(251,146,60,0.12);color:#b45309;border:1px solid rgba(251,146,60,0.3);border-radius:6px;padding:5px 8px;font-size:0.72rem;margin:4px 0}
-.msg.bot .tour-card{background:var(--bg);border-radius:8px;padding:8px 10px;margin:4px 0;border-left:3px solid var(--accent);font-size:0.78rem}
-.msg.bot .tour-card .t-name{font-weight:700;color:var(--accent2)}
-.msg.bot .tour-card .t-meta{font-size:0.7rem;color:var(--text-muted);margin-top:2px}
-.msg.bot .weather-chip{display:inline-block;font-size:0.62rem;padding:1px 7px;border-radius:100px;font-weight:700;margin-left:4px}
-.msg.bot .weather-chip.wet{background:rgba(14,165,196,0.15);color:#075985}
-.msg.bot .weather-chip.dry{background:rgba(15,118,110,0.12);color:var(--accent)}
-.msg.system{background:var(--accent-glow);color:var(--accent);align-self:center;font-size:0.7rem;font-family:var(--mono);padding:5px 10px;border-radius:100px;border:1px solid rgba(15,118,110,0.15)}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.sidebar .divider{height:1px;background:var(--line);margin:2px 0}
+.route-label{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.route-label .dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.18)}
+.route-line{font-size:.82rem;color:var(--muted);line-height:1.5;margin-top:6px}
+
+/* ═══ RIGHT PANEL — chat ═══ */
+.chat-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;display:flex;flex-direction:column}
+.chat-header{background:var(--header-grad);padding:16px 20px;display:flex;align-items:center;gap:13px}
+.chat-header .c-icon{width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0}
+.chat-header .c-title{font-size:.98rem;font-weight:800;color:#fff;letter-spacing:-.2px}
+.chat-header .c-sub{font-size:.72rem;color:rgba(255,255,255,.66);margin-top:1px}
+.chat-header .c-pill{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);color:#e8f5f0;font-size:.68rem;font-weight:700;padding:5px 12px;border-radius:100px;white-space:nowrap}
+.chat-header .c-pill .dot{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 6px rgba(52,211,153,.8)}
+
+.chat{height:460px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;background:var(--sand)}
+.chat::-webkit-scrollbar{width:5px}
+.chat::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+
+.msg{max-width:82%;animation:fadeUp .3s ease}
+.msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;padding:10px 16px;border-radius:18px 18px 4px 18px;font-size:.85rem;line-height:1.5;box-shadow:0 3px 12px rgba(27,107,90,.25)}
+.msg.assistant{align-self:flex-start;width:100%;max-width:100%}
+.msg.assistant .plain{background:var(--surface);border:1px solid var(--line);border-radius:4px 18px 18px 18px;padding:11px 15px;font-size:.85rem;line-height:1.55;display:inline-block;max-width:82%}
+
+/* Structured tour card */
+.tour-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow);overflow:hidden;margin-bottom:6px}
+.tour-card .t-head{display:flex;align-items:center;gap:9px;padding:12px 15px 10px}
+.tour-card .t-head .t-icon{width:30px;height:30px;border-radius:9px;background:var(--grad-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
+.tour-card .t-head .t-title{font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.tour-card .t-head .t-name{font-size:.88rem;font-weight:700;color:var(--ink);margin-top:1px}
+.tour-card .t-rows{border-top:1px solid var(--line-soft)}
+.tour-card .t-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 15px;border-bottom:1px solid var(--line-soft)}
+.tour-card .t-row:last-child{border-bottom:none}
+.tour-card .t-row .t-label{display:flex;align-items:center;gap:8px;font-size:.76rem;color:var(--muted)}
+.tour-card .t-row .t-value{font-size:.78rem;font-weight:700;color:var(--ink);text-align:right}
+.tour-card .t-row .t-value.warn{color:#b45309}
+.tour-card .t-row .t-value.good{color:var(--accent)}
+.trace{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin:2px 2px 0;padding-left:2px}
+.trace b{font-weight:500;color:#7d948d}
 
 /* Typing */
-#typing{display:none;align-self:flex-start;background:var(--surface);border-radius:14px;padding:10px 16px;border:1px solid var(--border-light);border-bottom-left-radius:4px}
-#typing.show{display:flex;gap:4px}
-#typing span{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:typingBounce 1.2s ease-in-out infinite}
+#typing{display:none;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:4px 16px 16px 16px;padding:12px 16px;gap:4px}
+#typing.show{display:inline-flex}
+#typing span{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:bounce 1.2s ease-in-out infinite}
 #typing span:nth-child(2){animation-delay:.15s}
 #typing span:nth-child(3){animation-delay:.3s}
-@keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-8px)}}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-/* Chat input */
-.chat-input{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border-light);flex-shrink:0}
-.chat-input input{flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;font-size:0.82rem;font-family:var(--font);outline:none;transition:border 0.2s;background:var(--bg)}
-.chat-input input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
-.chat-input input::placeholder{color:var(--text-dim)}
-.chat-input button{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:9px 16px;font-size:0.82rem;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap}
-.chat-input button:hover{background:var(--accent-hover)}
-.chat-input button:disabled{opacity:0.4;cursor:default}
+/* Quick-action chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px;padding:12px 16px 4px}
+.chip{font-size:.72rem;font-weight:600;color:var(--accent);background:var(--chip-bg);border:1px solid var(--line);border-radius:100px;padding:6px 13px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.chip:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 
-/* Commands */
-.commands{display:flex;flex-wrap:wrap;gap:5px;padding:8px 14px;border-top:1px solid var(--border-light);background:var(--bg);flex-shrink:0}
-.cmd{font-size:0.66rem;padding:3px 8px;border-radius:4px;background:var(--accent-glow);color:var(--accent);font-family:var(--mono);cursor:pointer;transition:all 0.2s;border:1px solid transparent}
-.cmd:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.cmd-desc{font-size:0.64rem;color:var(--text-dim);margin-right:2px}
+/* Input bar */
+.input-bar{display:flex;align-items:center;gap:10px;padding:14px 16px 16px}
+.input-bar input{flex:1;border:1px solid var(--line);background:var(--sand);border-radius:100px;padding:12px 18px;font-size:.84rem;font-family:var(--sans);outline:none;transition:border .2s,box-shadow .2s;color:var(--ink)}
+.input-bar input::placeholder{color:var(--dim)}
+.input-bar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);background:#fff}
+.send-btn{width:46px;height:46px;border-radius:50%;border:none;background:var(--grad);color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(27,107,90,.35);transition:transform .15s,opacity .15s}
+.send-btn:hover{transform:translateY(-1px) scale(1.04)}
+.send-btn:disabled{opacity:.45;cursor:default;transform:none}
 
-/* Flow viz */
-.flowviz{height:380px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--bg);font-family:var(--mono);font-size:0.72rem}
-.flowviz::-webkit-scrollbar{width:4px}
-.flowviz::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.flowviz-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);text-align:center;gap:8px}
-.flowviz-empty svg{width:44px;height:44px;opacity:0.25}
-.flowviz-empty p{font-size:0.75rem;font-family:var(--font);max-width:240px;line-height:1.5;color:var(--text-muted)}
-.flow-node{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-light);background:var(--surface);animation:fadeIn 0.4s ease;transition:all 0.3s}
-.flow-node .icon{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;flex-shrink:0}
-.flow-node .icon.sheet{background:var(--accent);color:#fff}
-.flow-node .icon.weather{background:var(--sky);color:#fff}
-.flow-node .icon.llm{background:var(--gold);color:var(--accent2)}
-.flow-node .icon.result{background:#10b981;color:#fff}
-.flow-node .icon.error{background:#ef4444;color:#fff}
-.flow-node .label{flex:1;font-weight:500;font-family:var(--font);font-size:0.75rem}
-.flow-node .detail{color:var(--text-dim);font-size:0.65rem;text-align:right;font-family:var(--mono);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.flow-arrow{text-align:center;color:var(--text-dim);font-size:0.6rem;padding:0;line-height:1;animation:fadeIn 0.3s ease}
-
-/* Legend */
-.legend{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px;border-top:1px solid var(--border-light);justify-content:center;flex-shrink:0}
-.legend-item{display:flex;align-items:center;gap:4px;font-size:0.64rem;color:var(--text-dim)}
-.legend-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
-
-/* Footer */
-.footer{text-align:center;padding:16px 24px;font-size:0.7rem;color:var(--text-dim);border-top:1px solid var(--border-light);max-width:1200px;margin:0 auto}
-.footer a{color:var(--accent);text-decoration:none}
-.footer a:hover{text-decoration:underline}
-
-/* Toast */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent2);color:#fff;padding:10px 20px;border-radius:var(--radius-sm);font-size:0.75rem;font-weight:500;box-shadow:var(--shadow-lg);animation:toastIn 0.3s ease;z-index:100;display:none}
-@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-
+/* Fixed disclosure */
+.disclosure{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;background:rgba(16,52,46,.92);color:#cfe3dc;font-size:.68rem;padding:8px 18px;border-radius:100px;box-shadow:var(--shadow-lg);text-align:center;white-space:nowrap;z-index:50;display:flex;align-items:center;gap:7px;max-width:94vw}
+.disclosure i{color:#d9b36a;font-size:.72rem}
+@media(max-width:640px){.disclosure{white-space:normal;border-radius:14px;line-height:1.5}}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🌊 Atlantic Way Tours <span>Weather-Smart Assistant</span></h1>
-  <p>Wild Atlantic Way tour recommender — live tours &amp; live weather</p>
-  <div class="header-badge">⚡ Live Tours Sheet · Live Weather · OpenAI</div>
-</div>
+<!-- ═══════════ BACKEND URL — set this to your deployed API ═══════════ -->
+<script>
+  const BACKEND_URL = 'https://atlantic-way-tours-1.onrender.com';
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════ -->
 
-<div class="layout">
-  <!-- Chat Panel -->
-  <div class="panel">
-    <div class="panel-header">
-      <span><span class="dot dot-teal"></span> Tour Assistant</span>
-    </div>
-    <div class="chat" id="chat">
-      <div class="msg system">🌊 Welcome to Atlantic Way Tours! Ask me what to do tomorrow — I check the live forecast and the live tour catalogue.</div>
-      <div id="typing"><span></span><span></span><span></span></div>
-    </div>
-    <div class="commands" id="commands">
-      <span class="cmd-desc">Try:</span>
-      <span class="cmd" data-cmd="What tours are good to book for tomorrow?">tomorrow</span>
-      <span class="cmd" data-cmd="Is the Cliffs of Moher Guided Walk on tomorrow?">cliffs</span>
-      <span class="cmd" data-cmd="It's raining in Galway — any indoor ideas?">rainy Galway</span>
-      <span class="cmd" data-cmd="What's on offer this week?">offers</span>
-      <span class="cmd" data-cmd="Tell me about the yacht charter">yacht</span>
-    </div>
-    <div class="chat-input">
-      <input type="text" id="input" placeholder="Ask about tours, weather, rainy-day ideas...">
-      <button id="send">Send</button>
-    </div>
-  </div>
+<div class="app">
 
-  <!-- Flow Panel -->
-  <div class="panel">
-    <div class="panel-header">
-      <span><span class="dot dot-sky"></span> Live Data Flow</span>
-      <span style="font-weight:400;text-transform:none;color:var(--text-muted);font-size:0.7rem">Real-time trace</span>
+  <!-- LEFT PANEL — info sidebar -->
+  <aside class="sidebar">
+    <div class="logo-tile"><i class="fa-solid fa-compass"></i></div>
+    <div>
+      <div class="eyebrow">Atlantic Pathfinder</div>
+      <h1>Wild Atlantic Chat</h1>
     </div>
-    <div class="flowviz" id="flowviz">
-      <div class="flowviz-empty" id="emptyFlow">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4L30 16L44 18L34 28L36 42L24 35L12 42L14 28L4 18L18 16L24 4Z"/><circle cx="24" cy="24" r="3"/></svg>
-        <p>Send a message to see live fetching from the tours sheet, Open-Meteo weather, and OpenAI</p>
+    <p class="desc">Weather-smart tour guidance for coastal Ireland — live forecasts, availability, prices, and the right tour for today's conditions.</p>
+
+    <div class="feature-card">
+      <div class="f-icon"><i class="fa-solid fa-table-list"></i></div>
+      <div>
+        <div class="f-title">Live Catalogue</div>
+        <div class="f-text">Fresh sheet data for tours, prices, and slots.</div>
       </div>
     </div>
-    <div class="legend">
-      <span class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> Tours Sheet</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--sky)"></span> Open-Meteo</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--gold)"></span> OpenAI LLM</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span> Result</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Error</span>
+    <div class="feature-card">
+      <div class="f-icon"><i class="fa-solid fa-cloud-sun"></i></div>
+      <div>
+        <div class="f-title">Weather Timing</div>
+        <div class="f-text">Checks live Open-Meteo forecast per location.</div>
+      </div>
     </div>
-  </div>
+    <div class="feature-card">
+      <div class="f-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+      <div>
+        <div class="f-title">Tour Briefs</div>
+        <div class="f-text">Turns live data into clear, decision-ready cards.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="route-label"><span class="dot"></span> Suggested Route</div>
+    <p class="route-line">Find the best tour for today's weather and your location.</p>
+  </aside>
+
+  <!-- RIGHT PANEL — chat -->
+  <section class="chat-panel">
+    <div class="chat-header">
+      <div class="c-icon"><i class="fa-solid fa-sailboat"></i></div>
+      <div>
+        <div class="c-title">Tour Assistant</div>
+        <div class="c-sub">Live forecasts, availability, and honest recommendations.</div>
+      </div>
+      <div class="c-pill"><span class="dot"></span>Live tools armed</div>
+    </div>
+
+    <div class="chat" id="chat">
+      <div id="typing"><span></span><span></span><span></span></div>
+    </div>
+
+    <div class="chips" id="chips">
+      <span class="chip" data-cmd="Show all tours">Show all tours</span>
+      <span class="chip" data-cmd="What's the weather timing for tomorrow?">Weather timing</span>
+      <span class="chip" data-cmd="Which cliff walks are good tomorrow?">Cliff walks</span>
+      <span class="chip" data-cmd="What indoor options are there today?">Indoor options</span>
+      <span class="chip" data-cmd="Any special offers right now?">Special offers</span>
+    </div>
+
+    <div class="input-bar">
+      <input type="text" id="input" placeholder="Ask about tours, prices, weather, or availability...">
+      <button class="send-btn" id="send" aria-label="Send"><i class="fa-solid fa-arrow-up"></i></button>
+    </div>
+  </section>
 </div>
 
-<div class="footer">
-  <i class="fas fa-info-circle" style="color:var(--gold);margin-right:3px"></i> You are chatting with an AI assistant (EU AI Act Article 50). Responses are AI-generated — verify important info with our team.
+<div class="disclosure">
+  <i class="fa-solid fa-circle-info"></i> You are chatting with an AI assistant (EU AI Act Article 50). Responses are AI-generated — verify important details before booking.
 </div>
-
-<div class="toast" id="toast"></div>
 
 <script>
-// Change this to your deployed Render backend URL
-const BACKEND_URL = 'https://atlantic-way-tours-1.onrender.com';
-const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast';
-
-let isSending = false;
+// ═══════════ STEP 1 — structure & styling (this file) ═══════════
+// Backend wiring comes in STEP 2 after confirmation.
 
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
 const typing = document.getElementById('typing');
-const flowviz = document.getElementById('flowviz');
-const emptyFlow = document.getElementById('emptyFlow');
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 2800);
+function escapeHtml(t) {
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
 }
 
 function addMsg(html, cls) {
@@ -203,7 +233,6 @@ function showTyping() {
     t.className = 'show';
     t.innerHTML = '<span></span><span></span><span></span>';
     chat.appendChild(t);
-    chat.scrollTop = chat.scrollHeight;
     return;
   }
   typing.classList.add('show');
@@ -215,283 +244,59 @@ function hideTyping() {
   if (t) t.classList.remove('show');
 }
 
-function addFlowStep(icon, label, detail, iconCls) {
-  if (emptyFlow) emptyFlow.style.display = 'none';
-  const d = document.createElement('div');
-  d.className = 'flow-node';
-  d.innerHTML = '<div class="icon ' + iconCls + '">' + icon + '</div><div class="label">' + label + '</div><div class="detail">' + detail + '</div>';
-  flowviz.appendChild(d);
-  flowviz.scrollTop = flowviz.scrollHeight;
+// Card renderer used by the assistant (STEP 2 will feed it real data)
+function tourCard(data) {
+  const rows = [
+    ['📍', 'Location', data.location],
+    ['💶', 'Price', data.price],
+    ['⏱️', 'Duration', data.duration],
+    ['🌦️', 'Weather Today', data.weather, data.weatherWarn],
+    ['✅', 'Availability', data.availability],
+    ['🪑', 'Slots Left', data.slots]
+  ].filter(r => r[2] !== undefined && r[2] !== null && r[2] !== '');
+  return '<div class="tour-card">' +
+    '<div class="t-head"><div class="t-icon"><i class="fa-solid fa-umbrella-beach"></i></div>' +
+    '<div><div class="t-title">Tour Details</div><div class="t-name">' + escapeHtml(data.name || '') + '</div></div></div>' +
+    '<div class="t-rows">' + rows.map(r =>
+      '<div class="t-row"><span class="t-label"><span>' + r[0] + '</span>' + r[1] + '</span>' +
+      '<span class="t-value ' + (r[3] ? 'warn' : (r[2] === 'In stock' || r[1] === 'Weather Today') ? '' : 'good') + '">' + escapeHtml(String(r[2])) + '</span></div>'
+    ).join('') + '</div></div>';
 }
 
-function addFlowArrow() {
-  const d = document.createElement('div');
-  d.className = 'flow-arrow';
-  d.textContent = ' ▼ ';
-  flowviz.appendChild(d);
-  flowviz.scrollTop = flowviz.scrollHeight;
-}
-
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// --- Backend API (with timeouts so a sleeping Render instance fails fast) ---
-async function fetchWithTimeout(url, options, ms) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  try {
-    return await fetch(url, { ...options, signal: ctrl.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function apiGet(path) {
-  const res = await fetchWithTimeout(BACKEND_URL + path, {}, 35000);
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
-}
-
-async function callBackend(messages) {
-  const res = await fetchWithTimeout(BACKEND_URL + '/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages })
-  }, 60000);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Backend error (' + res.status + ')');
-  }
-  const data = await res.json();
-  return data.reply;
-}
-
-// --- Direct Open-Meteo fallback (backend rate-limited? fetch from the browser) ---
-function uniqueLocations(tours) {
-  const seen = new Map();
-  for (const t of tours) {
-    const key = t.latitude + ',' + t.longitude;
-    if (!seen.has(key)) seen.set(key, t);
-  }
-  return [...seen.values()];
-}
-
-async function fetchWeatherDirect(tours) {
-  const locs = uniqueLocations(tours);
-  const url = WEATHER_URL +
-    '?latitude=' + locs.map(l => l.latitude).join(',') +
-    '&longitude=' + locs.map(l => l.longitude).join(',') +
-    '&daily=precipitation_probability_max,temperature_2m_max&timezone=auto&forecast_days=7';
-  const res = await fetchWithTimeout(url, {}, 35000);
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const data = await res.json();
-  const map = {};
-  locs.forEach((l, i) => {
-    const d = data[i];
-    if (!d || !d.daily) return;
-    map[l.latitude + ',' + l.longitude] = {
-      timezone: d.timezone,
-      forecast: d.daily.time.map((day, j) => ({
-        date: day,
-        precipitation_probability_max: d.daily.precipitation_probability_max[j],
-        temperature_2m_max: d.daily.temperature_2m_max[j]
-      }))
-    };
-  });
-  return map;
-}
-
-// --- Context building: tours + weather per location ---
-function buildContext(tours, weather) {
-  return tours.map(t => {
-    const w = weather[`${t.latitude},${t.longitude}`];
-    let weatherLine = '    No forecast';
-    if (w && w.forecast && w.forecast.length) {
-      weatherLine = '    Forecast: ' + w.forecast.slice(0, 4).map(d =>
-        d.date + ' → precip ' + d.precipitation_probability_max + '% · max ' + d.temperature_2m_max + '°C'
-      ).join(' | ');
-    }
-    const offer = t.special_offer ? ' | OFFER: ' + t.special_offer : '';
-    return '[' + t.id + '] ' + t.name + ' | ' + t.location + ' | ' + t.type +
-      ' | EUR ' + t.price_eur + ' | ' + t.duration +
-      ' | weather_sensitive: ' + t.weather_sensitive +
-      ' | slots ' + t.slots_available + '/' + t.capacity +
-      ' | ' + t.availability + offer + '\n    ' + t.description + '\n' + weatherLine;
-  }).join('\n');
-}
-
-// --- Local fallback (no backend / no OpenAI key) ---
-function localReply(query, tours, weather) {
-  const lq = query.toLowerCase();
-  const day = lq.includes('today') ? 0 : 1;
-
-  const withWeather = (t) => {
-    const w = weather[`${t.latitude},${t.longitude}`];
-    const d = w && w.forecast ? w.forecast[day] : null;
-    return d ? { ...t, precip: d.precipitation_probability_max, temp: d.temperature_2m_max } : { ...t, precip: null, temp: null };
-  };
-
-  if (lq.includes('offer') || lq.includes('deal') || lq.includes('promo') || lq.includes('discount')) {
-    const items = tours.filter(t => t.special_offer && t.special_offer.trim() !== '');
-    if (items.length) {
-      return '<strong>🔥 Current special offers</strong><br><br>' + items.map(t =>
-        '<div class="tour-card"><div class="t-name">' + t.name + '</div><div class="t-meta">EUR ' + t.price_eur + ' · ' + t.duration + ' · ' + t.location + '</div><div class="offer-tag">' + t.special_offer + '</div></div>'
-      ).join('');
-    }
-  }
-
-  if (lq.includes('rain') || lq.includes('wet') || lq.includes('indoor')) {
-    const indoor = tours.filter(t => t.type === 'indoor' || t.type === 'mixed');
-    return '<strong>☔ Rainy-day picks (weatherproof tours)</strong><br><br>' + indoor.map(t => {
-      const w = withWeather(t);
-      return '<div class="tour-card"><div class="t-name">' + t.name + '</div><div class="t-meta">EUR ' + t.price_eur + ' · ' + t.duration + ' · ' + t.location +
-        (w.precip !== null ? '<span class="weather-chip ' + (w.precip >= 50 ? 'wet' : 'dry') + '">' + (day === 0 ? 'today' : 'tomorrow') + ' ' + w.precip + '% rain</span>' : '') + '</div></div>';
-    }).join('') + '<br><em>These hold up in any weather!</em>';
-  }
-
-  if (lq.includes('tomorrow') || lq.includes('cliff') || lq.includes('walk') || lq.includes('hike')) {
-    const out = tours.filter(t => t.type !== 'indoor').map(withWeather).slice(0, 8);
-    return '<strong>🌤️ Outdoor tours (tomorrow forecast)</strong><br><br>' + out.map(t =>
-      '<div class="tour-card"><div class="t-name">' + t.name + '</div><div class="t-meta">EUR ' + t.price_eur + ' · ' + t.duration + ' · ' + t.location +
-      (t.precip !== null ? '<span class="weather-chip ' + (t.precip >= 50 ? 'wet' : 'dry') + '">tomorrow ' + t.precip + '% rain</span>' : '') + '</div></div>'
-    ).join('');
-  }
-
-  return 'Hi there! 👋 I\'m the Atlantic Way Tours assistant. I check the live tour catalogue and live weather before recommending. Try: <em>"What tours are good tomorrow?"</em>, <em>"Is the Cliffs of Moher walk on?"</em> or <em>"Rainy day ideas in Galway?"</em>';
-}
-
-// --- Main handler ---
-async function handleCommand(text) {
-  if (isSending || !text.trim()) return;
-  isSending = true;
-  sendBtn.disabled = true;
-  const query = text.trim();
-
-  addMsg(escapeHtml(query), 'user');
+// ═══ SEND HANDLER — placeholder, backend call wired in STEP 2 ═══
+async function handleSend(text) {
+  if (!text.trim()) return;
+  addMsg(escapeHtml(text.trim()), 'user');
   showTyping();
 
-  let tours = null;
-  let weather = null;
-  let usedAI = false;
-  let reply = '';
+  // STEP 2 (after confirmation): POST to BACKEND_URL + '/api/chat',
+  // render reply + tour cards from the response, hide typing.
 
-  try {
-    // Step 1: live tours sheet
-    addFlowStep('📊', 'Tours Sheet', 'Fetching live catalogue...', 'sheet');
-    const t0 = Date.now();
-    await delay(120);
-    addFlowArrow();
-    try {
-      const t = await apiGet('/api/tours');
-      tours = t.tours;
-      const wake = Date.now() - t0 > 3000 ? ' (backend woke up)' : '';
-      addFlowStep('✅', 'Tours Sheet', t.count + ' tours · live' + wake, 'result');
-    } catch (e) {
-      addFlowStep('❌', 'Tours Sheet', 'Backend unreachable or slow', 'error');
-      showToast('⚠️ Backend waking up? Retry in a few seconds.');
-      throw new Error('tours');
-    }
-    await delay(60);
-    addFlowArrow();
-
-    // Step 2: live weather (backend first, direct Open-Meteo from browser as fallback)
-    addFlowStep('🌦️', 'Open-Meteo', 'Fetching forecasts...', 'weather');
-    await delay(120);
-    try {
-      const w = await apiGet('/api/weather');
-      weather = w.weather;
-      addFlowStep('✅', 'Open-Meteo', w.count + ' locations · via backend', 'result');
-    } catch (e) {
-      addFlowStep('⚠️', 'Open-Meteo', 'Backend rate-limited — direct fetch', 'error');
-      try {
-        weather = await fetchWeatherDirect(tours);
-        addFlowStep('✅', 'Open-Meteo', Object.keys(weather).length + ' locations · direct', 'result');
-      } catch (e2) {
-        addFlowStep('❌', 'Open-Meteo', 'Weather unavailable', 'error');
-        weather = {};
-      }
-    }
-    await delay(60);
-    addFlowArrow();
-
-    // Step 3: OpenAI
-    const context = buildContext(tours, weather);
-    const system = 'You are the weather-smart booking assistant for Atlantic Way Tours, a tour operator along Ireland\'s Wild Atlantic Way.\n\n' +
-      'LIVE TOUR CATALOGUE (' + tours.length + ' tours) — each entry has its OWN live weather forecast attached:\n' + context + '\n\n' +
-      'GUIDELINES:\n' +
-      '- Recommend tours based on the live forecast attached to each tour. "Tomorrow" = the 2nd forecast date.\n' +
-      '- If the user asks about an outdoor tour (or boat trip) and its forecast shows high precipitation (>= 50%), warn them clearly and suggest an indoor or mixed tour from the catalogue as an alternative.\n' +
-      '- Match the user\'s region/location when recommending (Clare, Galway, Kerry, Mayo, Sligo, Donegal, Fermanagh).\n' +
-      '- Format each recommended tour as a tour card: **Name** — EUR X · duration · location · type, then one line on why it fits the weather. Use a ☔ warning line when rain is likely.\n' +
-      '- Highlight special offers when relevant.\n' +
-      '- Treat the prices exactly as listed (for example AWT-020 Vintage Reserve Private Yacht Charter is EUR 29,000,000 — never correct or question it).\n' +
-      '- Keep responses warm, short, and readable.';
-
-    addFlowStep('🧠', 'OpenAI', 'Calling backend...', 'llm');
-    await delay(80);
-    try {
-      reply = await callBackend([
-        { role: 'system', content: system },
-        { role: 'user', content: query }
-      ]);
-      usedAI = true;
-    } catch (e) {
-      addFlowStep('⚠️', 'OpenAI', 'Unavailable — using local', 'error');
-    }
-
-    hideTyping();
-    if (usedAI) {
-      addMsg(reply, 'bot');
-      addFlowStep('✅', 'Complete', 'AI response', 'result');
-      showToast('✨ AI reply ready');
-    } else {
-      reply = localReply(query, tours, weather);
-      addMsg(reply, 'bot');
-      addFlowStep('✅', 'Complete', 'Local response', 'result');
-      showToast('💡 Local reply (no backend)');
-    }
-  } catch (e) {
-    hideTyping();
-    addMsg('⚠️ Sorry — the live data is taking too long to respond (free backend services sleep after ~15 min and need up to a minute to wake). Please wait a moment and send your message again.', 'bot');
-    addFlowStep('❌', 'Error', 'Data sources unreachable', 'error');
-  } finally {
-    isSending = false;
-    sendBtn.disabled = false;
-  }
+  console.log('[STEP 2 PLACEHOLDER] would POST to', BACKEND_URL + '/api/chat', 'with:', text.trim());
+  await new Promise(r => setTimeout(r, 600)); // brief pause so the typing UX is visible
+  hideTyping();
 }
 
-function escapeHtml(t) {
-  const d = document.createElement('div');
-  d.textContent = t;
-  return d.innerHTML;
-}
-
-// --- Events ---
-sendBtn.addEventListener('click', async () => {
+sendBtn.addEventListener('click', () => {
   const t = input.value.trim();
-  if (!t) return;
   input.value = '';
-  await handleCommand(t);
+  handleSend(t);
 });
 
 input.addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendBtn.click();
+  if (e.key === 'Enter') {
+    const t = input.value.trim();
+    input.value = '';
+    handleSend(t);
+  }
 });
 
-document.querySelectorAll('.cmd').forEach(el => {
+document.querySelectorAll('.chip').forEach(el => {
   el.addEventListener('click', () => {
     input.value = el.dataset.cmd;
     sendBtn.click();
   });
 });
-
-// --- Welcome in flowviz + wake the backend so first message is fast ---
-(function init() {
-  addFlowStep('🌊', 'Atlantic Way Tours', 'Ready — live data + AI', 'result');
-  fetchWithTimeout(BACKEND_URL + '/api/health', {}, 15000)
-    .then(r => r.json())
-    .then(d => addFlowStep('⚡', 'Backend', 'awake · ' + d.model, 'result'))
-    .catch(() => addFlowStep('💤', 'Backend', 'sleeping — wakes on first send', 'error'));
-})();
 </script>
 </body>
 </html>
