@@ -112,7 +112,7 @@ app.post('/api/chat', async (req, res) => {
       '- Keep "reply" under 120 words, warm and friendly.\n\n' +
       'Respond ONLY with a JSON object of this exact shape (no markdown fences):\n' +
       '{"reply": "your answer text", "tours": [{"name": "...", "location": "...", "price": "EUR 45", "duration": "3h", "weather_today": "62% rain tomorrow", "availability": "In stock", "slots_left": "12"}], "tools": ["search_catalogue", "weather_forecast"]}\n' +
-      '- "tours": 1-3 recommended tours (max 3) with the exact fields above. Empty array if the user is not asking about specific tours.\n' +
+      '- "tours": 1-3 recommended tours (max 3) with the exact fields above. ALWAYS populate it when the user asks about a specific tour or for recommendations; use an empty array only for pure chit-chat.\n' +
       '- "tools": which live sources you used: "search_catalogue" (always), "weather_forecast" (when weather was available).';
 
     const openaiRes = await fetch(OPENAI_URL, {
