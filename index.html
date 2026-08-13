@@ -123,6 +123,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     </div>
     <div class="chat" id="chat">
       <div class="msg system">🌊 Welcome to Atlantic Way Tours! Ask me what to do tomorrow — I check the live forecast and the live tour catalogue.</div>
+      <div id="typing"><span></span><span></span><span></span></div>
     </div>
     <div class="commands" id="commands">
       <span class="cmd-desc">Try:</span>
@@ -196,12 +197,22 @@ function addMsg(html, cls) {
 }
 
 function showTyping() {
+  if (!typing) {
+    const t = document.createElement('div');
+    t.id = 'typing';
+    t.className = 'show';
+    t.innerHTML = '<span></span><span></span><span></span>';
+    chat.appendChild(t);
+    chat.scrollTop = chat.scrollHeight;
+    return;
+  }
   typing.classList.add('show');
   chat.scrollTop = chat.scrollHeight;
 }
 
 function hideTyping() {
-  typing.classList.remove('show');
+  const t = document.getElementById('typing');
+  if (t) t.classList.remove('show');
 }
 
 function addFlowStep(icon, label, detail, iconCls) {
