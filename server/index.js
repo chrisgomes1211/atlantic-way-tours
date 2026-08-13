@@ -154,6 +154,32 @@ app.post('/api/chat', async (req, res) => {
       console.warn('LLM output was not JSON, falling back to plain reply');
     }
 
+    // Deterministic card fallback: if the reply discusses tours but no cards came
+    // back, build them from the live catalogue + forecast
+    if (outTours.length === 0 && tours.length > 0 && reply.length > 0) {
+      const lower = reply.toLowerCase();
+      const matches = tours.filter(t =>
+        lower.includes(t.name.toLowerCase().split(' ')[0].toLowerCase()) ||
+        lower.includes(t.name.toLowerCase())
+      ).slice(0, 3);
+      if (matches.length === 0 && /tour|walk|hike|trip|visit|cruise|safari|tasting|tour/i.test(lower)) {
+        matches.push(...tours.slice(0, 2));
+      }
+      outTours = matches.map(t => {
+        const w = weather[`${t.latitude},${t.longitude}`];
+        const day = w && w.forecast && w.forecast[1] ? w.forecast[1] : (w && w.forecast && w.forecast[0] ? w.forecast[0] : null);
+        return {
+          name: t.name,
+          location: t.location,
+          price: 'EUR ' + t.price_eur,
+          duration: t.duration,
+          weather_today: day ? day.precipitation_probability_max + '% rain · max ' + day.temperature_2m_max + '°C' : 'No forecast available',
+          availability: t.availability,
+          slots_left: String(t.slots_available)
+        };
+      });
+    }
+
     res.json({ reply, tools: outTools, tours: outTours });
   } catch (err) {
     console.error('Server error:', err);
