@@ -244,37 +244,60 @@ function hideTyping() {
   if (t) t.classList.remove('show');
 }
 
-// Card renderer used by the assistant (STEP 2 will feed it real data)
-function tourCard(data) {
+function fetchWithTimeout(url, options, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
+// Card renderer fed by the backend's structured tour data
+function tourCard(t) {
+  const weatherNum = t.weather_today ? parseInt(String(t.weather_today).match(/\d+/), 10) : NaN;
+  const warn = !isNaN(weatherNum) && weatherNum >= 50;
   const rows = [
-    ['📍', 'Location', data.location],
-    ['💶', 'Price', data.price],
-    ['⏱️', 'Duration', data.duration],
-    ['🌦️', 'Weather Today', data.weather, data.weatherWarn],
-    ['✅', 'Availability', data.availability],
-    ['🪑', 'Slots Left', data.slots]
+    ['📍', 'Location', t.location, false],
+    ['💶', 'Price', t.price, false],
+    ['⏱️', 'Duration', t.duration, false],
+    ['🌦️', 'Weather Today', t.weather_today, warn],
+    ['✅', 'Availability', t.availability, false],
+    ['🪑', 'Slots Left', t.slots_left, false]
   ].filter(r => r[2] !== undefined && r[2] !== null && r[2] !== '');
   return '<div class="tour-card">' +
     '<div class="t-head"><div class="t-icon"><i class="fa-solid fa-umbrella-beach"></i></div>' +
-    '<div><div class="t-title">Tour Details</div><div class="t-name">' + escapeHtml(data.name || '') + '</div></div></div>' +
+    '<div><div class="t-title">Tour Details</div><div class="t-name">' + escapeHtml(t.name || '') + '</div></div></div>' +
     '<div class="t-rows">' + rows.map(r =>
       '<div class="t-row"><span class="t-label"><span>' + r[0] + '</span>' + r[1] + '</span>' +
-      '<span class="t-value ' + (r[3] ? 'warn' : (r[2] === 'In stock' || r[1] === 'Weather Today') ? '' : 'good') + '">' + escapeHtml(String(r[2])) + '</span></div>'
+      '<span class="t-value ' + (r[3] ? 'warn' : 'good') + '">' + escapeHtml(String(r[2])) + '</span></div>'
     ).join('') + '</div></div>';
 }
 
-// ═══ SEND HANDLER — placeholder, backend call wired in STEP 2 ═══
+// ═══ SEND HANDLER — live backend (structured cards + tools trace) ═══
 async function handleSend(text) {
-  if (!text.trim()) return;
-  addMsg(escapeHtml(text.trim()), 'user');
+  const query = text.trim();
+  if (!query) return;
+  addMsg(escapeHtml(query), 'user');
   showTyping();
+  try {
+    const res = await fetchWithTimeout(BACKEND_URL + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: query }] })
+    }, 60000);
+    if (!res.ok) throw new Error('backend returned HTTP ' + res.status);
+    const data = await res.json();
 
-  // STEP 2 (after confirmation): POST to BACKEND_URL + '/api/chat',
-  // render reply + tour cards from the response, hide typing.
-
-  console.log('[STEP 2 PLACEHOLDER] would POST to', BACKEND_URL + '/api/chat', 'with:', text.trim());
-  await new Promise(r => setTimeout(r, 600)); // brief pause so the typing UX is visible
-  hideTyping();
+    let html = '<div class="plain">' + escapeHtml(data.reply || 'No reply received.') + '</div>';
+    if (data.tours && data.tours.length) {
+      html = data.tours.map(t => tourCard(t)).join('') + html;
+      const tools = (data.tools && data.tools.length) ? data.tools.join(', ') : 'search_catalogue';
+      html += '<div class="trace">tools used: <b>' + escapeHtml(tools) + '</b></div>';
+    }
+    hideTyping();
+    addMsg(html, 'assistant');
+  } catch (e) {
+    hideTyping();
+    addMsg('<div class="plain">⚠️ ' + escapeHtml('Backend unreachable (' + e.message.slice(0, 70) + '). Free services sleep after ~15 min — wait a moment and try again.') + '</div>', 'assistant');
+  }
 }
 
 sendBtn.addEventListener('click', () => {

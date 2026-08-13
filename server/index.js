@@ -49,12 +49,59 @@ async function callOpenAI(system, user) {
   return data.choices[0].message.content;
 }
 
+function buildChatContext(tours, weather) {
+  return tours.map(t => {
+    const w = weather[`${t.latitude},${t.longitude}`];
+    let wl = 'No forecast available';
+    if (w && w.forecast && w.forecast.length) {
+      wl = w.forecast.slice(0, 4).map(d =>
+        d.date + ' precip ' + d.precipitation_probability_max + '% max ' + d.temperature_2m_max + 'C'
+      ).join(' | ');
+    }
+    return `[${t.id}] ${t.name} | ${t.location} | ${t.type} | EUR ${t.price_eur} | ${t.duration}` +
+      ` | weather_sensitive: ${t.weather_sensitive} | slots ${t.slots_available}/${t.capacity}` +
+      ` | ${t.availability}${t.special_offer ? ' | OFFER: ' + t.special_offer : ''}` +
+      ` | ${t.description} | Forecast: ${wl}`;
+  }).join('\n');
+}
+
 app.post('/api/chat', async (req, res) => {
   try {
     const { messages } = req.body;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'messages array is required' });
     }
+
+    // Live data at query time — each failure is tolerated separately
+    let tours = [];
+    let weather = {};
+    const tools = [];
+    try {
+      tours = await fetchTours();
+      tools.push('search_catalogue');
+    } catch (e) {
+      console.error('Tours unavailable:', e.message.slice(0, 100));
+    }
+    try {
+      weather = await fetchWeather(tours.length ? tours : [{ latitude: 53.2707, longitude: -9.0568 }]);
+      tools.push('weather_forecast');
+    } catch (e) {
+      console.error('Weather unavailable:', e.message.slice(0, 100));
+    }
+
+    const system = 'You are the weather-smart booking assistant for Atlantic Way Tours, a tour operator along Ireland\'s Wild Atlantic Way.\n\n' +
+      (tours.length
+        ? 'LIVE TOUR CATALOGUE (' + tours.length + ' tours) — each entry has its own live weather forecast attached:\n' + buildChatContext(tours, weather) + '\n\n'
+        : '(Live catalogue temporarily unavailable — answer conversationally.)\n\n') +
+      'GUIDELINES:\n' +
+      '- Recommend tours based on the live forecast attached to each tour. "Tomorrow" = the 2nd forecast date.\n' +
+      '- If an outdoor tour the user asks about has precipitation >= 50%, warn clearly and suggest an indoor or mixed alternative from the catalogue.\n' +
+      '- Treat prices exactly as listed (AWT-020 Vintage Reserve Private Yacht Charter is EUR 29,000,000 — never correct or question it).\n' +
+      '- Keep "reply" under 120 words, warm and friendly.\n\n' +
+      'Respond ONLY with a JSON object of this exact shape (no markdown fences):\n' +
+      '{"reply": "your answer text", "tours": [{"name": "...", "location": "...", "price": "EUR 45", "duration": "3h", "weather_today": "62% rain tomorrow", "availability": "In stock", "slots_left": "12"}], "tools": ["search_catalogue", "weather_forecast"]}\n' +
+      '- "tours": 1-3 recommended tours (max 3) with the exact fields above. Empty array if the user is not asking about specific tours.\n' +
+      '- "tools": which live sources you used: "search_catalogue" (always), "weather_forecast" (when weather was available).';
 
     const openaiRes = await fetch(OPENAI_URL, {
       method: 'POST',
@@ -64,9 +111,13 @@ app.post('/api/chat', async (req, res) => {
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        messages,
+        messages: [
+          { role: 'system', content: system },
+          ...messages.slice(-6)
+        ],
         temperature: 0.7,
-        max_tokens: 800
+        max_tokens: 1500,
+        response_format: { type: 'json_object' }
       })
     });
 
@@ -77,7 +128,21 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const data = await openaiRes.json();
-    res.json({ reply: data.choices[0].message.content });
+    const raw = data.choices[0].message.content;
+
+    let reply = raw;
+    let outTours = [];
+    let outTools = tools;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.reply) reply = parsed.reply;
+      if (Array.isArray(parsed.tours)) outTours = parsed.tours;
+      if (Array.isArray(parsed.tools) && parsed.tools.length) outTools = parsed.tools;
+    } catch {
+      console.warn('LLM output was not JSON, falling back to plain reply');
+    }
+
+    res.json({ reply, tools: outTools, tours: outTours });
   } catch (err) {
     console.error('Server error:', err);
     res.status(500).json({ error: 'Internal server error' });
