@@ -41,6 +41,7 @@ body{
 }
 
 .app{display:grid;grid-template-columns:minmax(300px,35%) 1fr;gap:22px;max-width:1240px;margin:0 auto;align-items:start}
+.right-col{display:flex;flex-direction:column;gap:22px}
 @media(max-width:900px){.app{grid-template-columns:1fr;gap:16px}}
 
 /* ═══ LEFT PANEL — info sidebar ═══ */
@@ -117,6 +118,37 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .send-btn:hover{transform:translateY(-1px) scale(1.04)}
 .send-btn:disabled{opacity:.45;cursor:default;transform:none}
 
+/* ═══ PIPELINE TRACE PANEL ═══ */
+.trace-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.trace-header{background:linear-gradient(135deg,#0d352d,#15513f);padding:14px 20px;display:flex;align-items:center;gap:12px}
+.trace-header .t-icon{width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+.trace-header .t-title{font-size:.92rem;font-weight:800;color:#fff;letter-spacing:-.2px}
+.trace-header .t-sub{font-size:.7rem;color:rgba(255,255,255,.6);margin-top:1px}
+.trace-header .t-pill{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);color:#e8f5f0;font-size:.64rem;font-weight:700;padding:4px 11px;border-radius:100px;white-space:nowrap}
+.trace-header .t-pill .dot{width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 6px rgba(52,211,153,.8)}
+.trace-body{max-height:340px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--sand);font-family:var(--mono);font-size:.7rem}
+.trace-body::-webkit-scrollbar{width:5px}
+.trace-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.trace-step{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:11px;border:1px solid var(--line-soft);background:var(--surface);animation:fadeUp .35s ease}
+.trace-step .s-icon{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.72rem;flex-shrink:0;color:#fff}
+.trace-step .s-icon.data{background:var(--grad)}
+.trace-step .s-icon.prompt{background:linear-gradient(135deg,#8a6d1f,#d9b36a)}
+.trace-step .s-icon.llm{background:linear-gradient(135deg,#0ea5c4,#0f8f7a)}
+.trace-step .s-icon.done{background:#10b981}
+.trace-step .s-icon.err{background:#ef4444}
+.trace-step .s-label{flex:1;font-weight:700;font-family:var(--sans);font-size:.74rem;color:var(--ink)}
+.trace-step .s-detail{color:var(--dim);font-size:.64rem;text-align:right;font-family:var(--mono);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trace-arrow{text-align:center;color:var(--dim);font-size:.58rem;line-height:1;animation:fadeUp .3s ease}
+.trace-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:130px;color:var(--dim);text-align:center;gap:8px;font-family:var(--sans)}
+.trace-empty svg{width:34px;height:34px;opacity:.3}
+.trace-empty p{font-size:.75rem;max-width:280px;line-height:1.5}
+.trace-details{display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 14px;background:var(--sand)}
+.trace-details details{flex:1;min-width:240px;background:var(--surface);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.trace-details summary{cursor:pointer;font-family:var(--sans);font-size:.72rem;font-weight:700;color:var(--accent);padding:8px 12px;list-style:none;display:flex;align-items:center;justify-content:space-between}
+.trace-details summary::after{content:'▾';font-size:.6rem;color:var(--dim);transition:transform .2s}
+.trace-details details[open] summary::after{transform:rotate(180deg)}
+.trace-details pre{background:#0d2b24;color:#cfe3dc;font-family:var(--mono);font-size:.62rem;line-height:1.5;padding:10px 12px;margin:0;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+
 /* Fixed disclosure */
 .disclosure{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;background:rgba(16,52,46,.92);color:#cfe3dc;font-size:.68rem;padding:8px 18px;border-radius:100px;box-shadow:var(--shadow-lg);text-align:center;white-space:nowrap;z-index:50;display:flex;align-items:center;gap:7px;max-width:94vw}
 .disclosure i{color:#d9b36a;font-size:.72rem}
@@ -169,7 +201,8 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
     <p class="route-line">Find the best tour for today's weather and your location.</p>
   </aside>
 
-  <!-- RIGHT PANEL — chat -->
+  <!-- RIGHT COLUMN — chat + pipeline trace -->
+  <div class="right-col">
   <section class="chat-panel">
     <div class="chat-header">
       <div class="c-icon"><i class="fa-solid fa-sailboat"></i></div>
@@ -197,6 +230,29 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
       <button class="send-btn" id="send" aria-label="Send"><i class="fa-solid fa-arrow-up"></i></button>
     </div>
   </section>
+
+  <!-- PIPELINE TRACE PANEL — how the prompt works -->
+  <section class="trace-panel">
+    <div class="trace-header">
+      <div class="t-icon"><i class="fa-solid fa-diagram-project"></i></div>
+      <div>
+        <div class="t-title">Prompt Pipeline</div>
+        <div class="t-sub">How your question becomes a reply — live trace</div>
+      </div>
+      <div class="t-pill"><span class="dot"></span>live</div>
+    </div>
+    <div class="trace-body" id="trace">
+      <div class="trace-empty" id="traceEmpty">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4L30 16L44 18L34 28L36 42L24 35L12 42L14 28L4 18L18 16L24 4Z"/><circle cx="24" cy="24" r="3"/></svg>
+        <p>Send a message to watch the pipeline: live data → system prompt → LLM → structured cards.</p>
+      </div>
+    </div>
+    <div class="trace-details" id="traceDetails" style="display:none">
+      <details id="promptBox"><summary>View system prompt</summary><pre id="promptPre"></pre></details>
+      <details id="rawBox"><summary>View raw model output</summary><pre id="rawPre"></pre></details>
+    </div>
+  </section>
+  </div>
 </div>
 
 <div class="disclosure">
@@ -211,6 +267,41 @@ const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
 const typing = document.getElementById('typing');
+const trace = document.getElementById('trace');
+const traceEmpty = document.getElementById('traceEmpty');
+
+// ─── Pipeline trace helpers ───
+function addStep(icon, label, detail, cls) {
+  if (traceEmpty) traceEmpty.style.display = 'none';
+  const d = document.createElement('div');
+  d.className = 'trace-step';
+  d.innerHTML = '<div class="s-icon ' + cls + '">' + icon + '</div><div class="s-label">' + label + '</div><div class="s-detail">' + detail + '</div>';
+  trace.appendChild(d);
+  trace.scrollTop = trace.scrollHeight;
+}
+
+function addArrow() {
+  const d = document.createElement('div');
+  d.className = 'trace-arrow';
+  d.textContent = '▼';
+  trace.appendChild(d);
+  trace.scrollTop = trace.scrollHeight;
+}
+
+function showPromptDetails(systemPrompt, rawOutput) {
+  const box = document.getElementById('traceDetails');
+  box.style.display = 'flex';
+  const p = document.getElementById('promptPre');
+  p.textContent = systemPrompt || 'not provided';
+  p.scrollTop = 0;
+  const r = document.getElementById('rawPre');
+  r.textContent = rawOutput || 'not provided';
+  r.scrollTop = 0;
+  const pd = document.getElementById('promptBox');
+  const rd = document.getElementById('rawBox');
+  if (pd.open) pd.open = false;
+  if (rd.open) rd.open = false;
+}
 
 function escapeHtml(t) {
   const d = document.createElement('div');
@@ -307,15 +398,28 @@ async function handleSend(text) {
   if (!query) return;
   addMsg(escapeHtml(query), 'user');
   showTyping();
+  const t0 = Date.now();
   try {
+    // Step 1 — live catalogue + weather (browser-side for rate-limit resilience)
+    addStep('📊', 'Live data', 'tours + forecast...', 'data');
+    const toursRes = await fetchWithTimeout(BACKEND_URL + '/api/tours', {}, 30000).catch(() => null);
+    const tours = toursRes && toursRes.ok ? (await toursRes.json()).tours : [];
     const weather = await browserWeather();
+    addStep('✅', 'Live data', tours.length + ' tours · ' + (weather ? Object.keys(weather).length + ' forecasts' : 'no weather'), 'done');
+    addArrow();
+
+    // Step 2 — POST to backend: prompt built there with live context
+    addStep('🧠', 'System prompt', 'building context...', 'prompt');
+    const chatT0 = Date.now();
     const res = await fetchWithTimeout(BACKEND_URL + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: [{ role: 'user', content: query }], weather })
     }, 60000);
     if (!res.ok) throw new Error('backend returned HTTP ' + res.status);
+    const chatMs = Date.now() - chatT0;
     const data = await res.json();
+    const meta = data.meta || {};
 
     let html = '<div class="plain">' + escapeHtml(data.reply || 'No reply received.') + '</div>';
     if (data.tours && data.tours.length) {
@@ -325,9 +429,22 @@ async function handleSend(text) {
     }
     hideTyping();
     addMsg(html, 'assistant');
+
+    // Pipeline trace completion
+    addStep('🧠', 'LLM ' + (meta.model || ''), (chatMs / 1000).toFixed(1) + 's · JSON mode', 'llm');
+    addArrow();
+    addStep('🧩', 'Structured parse', 'reply + ' + (data.tours ? data.tours.length : 0) + ' card(s)', 'data');
+    addArrow();
+    addStep('✅', 'Done', 'total ' + ((Date.now() - t0) / 1000).toFixed(1) + 's', 'done');
+    showPromptDetails(meta.systemChars ? data.system : null, data.raw || null);
+    if (meta.systemChars) {
+      const label = document.querySelector('#promptBox summary');
+      if (label) label.textContent = 'View system prompt (' + meta.systemChars.toLocaleString() + ' chars · ' + (meta.toursCount || 0) + ' tours)';
+    }
   } catch (e) {
     hideTyping();
     addMsg('<div class="plain">⚠️ ' + escapeHtml('Backend unreachable (' + e.message.slice(0, 70) + '). Free services sleep after ~15 min — wait a moment and try again.') + '</div>', 'assistant');
+    addStep('❌', 'Error', e.message.slice(0, 60), 'err');
   }
 }
 

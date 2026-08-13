@@ -72,6 +72,8 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'messages array is required' });
     }
 
+    const t0 = Date.now();
+
     // Live data at query time — each failure is tolerated separately
     let tours = [];
     let weather = {};
@@ -132,6 +134,7 @@ app.post('/api/chat', async (req, res) => {
         response_format: { type: 'json_object' }
       })
     });
+    const llmMs = Date.now() - t0;
 
     if (!openaiRes.ok) {
       const errText = await openaiRes.text();
@@ -180,7 +183,21 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-    res.json({ reply, tools: outTools, tours: outTours });
+    res.json({
+      reply,
+      tools: outTools,
+      tours: outTours,
+      meta: {
+        model: OPENAI_MODEL,
+        toursCount: tours.length,
+        weatherLocations: Object.keys(weather).length,
+        systemChars: system.length,
+        llmMs,
+        totalMs: Date.now() - t0
+      },
+      system,
+      raw
+    });
   } catch (err) {
     console.error('Server error:', err);
     res.status(500).json({ error: 'Internal server error' });
