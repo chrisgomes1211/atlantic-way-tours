@@ -174,6 +174,22 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .disclosure{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;background:rgba(16,52,46,.92);color:#cfe3dc;font-size:.68rem;padding:8px 18px;border-radius:100px;box-shadow:var(--shadow-lg);text-align:center;white-space:nowrap;z-index:50;display:flex;align-items:center;gap:7px;max-width:94vw}
 .disclosure i{color:#d9b36a;font-size:.72rem}
 @media(max-width:640px){.disclosure{white-space:normal;border-radius:14px;line-height:1.5}}
+
+/* ═══ FIXED ONE-SCREEN DASHBOARD (desktop 3-column) ═══
+   No page scroll — each panel fills the viewport and scrolls internally. */
+@media(min-width:1101px){
+  html,body{height:100%;overflow:hidden}
+  body{display:flex;align-items:stretch;padding:24px 22px 80px;box-sizing:border-box}
+  .app{height:100%;min-height:0;grid-template-rows:1fr;align-items:stretch}
+  .sidebar,.chat-panel,.trace-panel{min-height:0;height:100%}
+  .sidebar{overflow-y:auto}
+  .sidebar::-webkit-scrollbar{width:5px}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+  .chat{height:auto;flex:1;min-height:0;overflow-y:auto}
+  .trace-panel{overflow:hidden}
+  .trace-body{flex:1;min-height:0;max-height:none;overflow-y:auto}
+  .trace-details{flex:0 0 auto}
+}
 </style>
 </head>
 <body>
