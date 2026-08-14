@@ -40,9 +40,9 @@ body{
   padding:28px 20px 92px; /* bottom space for fixed disclosure */
 }
 
-.app{display:grid;grid-template-columns:minmax(300px,35%) 1fr;gap:22px;max-width:1240px;margin:0 auto;align-items:start}
-.right-col{display:flex;flex-direction:column;gap:22px}
-@media(max-width:900px){.app{grid-template-columns:1fr;gap:16px}}
+.app{display:grid;grid-template-columns:1fr 2fr 1fr;gap:22px;max-width:1440px;margin:0 auto;align-items:start}
+@media(max-width:1100px){.app{grid-template-columns:1fr 1fr;gap:16px}.trace-panel{grid-column:1/-1}}
+@media(max-width:720px){.app{grid-template-columns:1fr}}
 
 /* ═══ LEFT PANEL — info sidebar ═══ */
 .sidebar{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:28px 26px;display:flex;flex-direction:column;gap:20px}
@@ -81,9 +81,18 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 
 /* Structured tour card */
 .tour-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow);overflow:hidden;margin-bottom:6px;display:flex}
-.t-img{width:104px;flex-shrink:0;position:relative}
-.t-img img{width:100%;height:100%;object-fit:cover;display:block}
-.t-img .t-img-fallback{width:100%;height:100%;background:var(--grad-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:1.3rem}
+.t-img{width:104px;height:104px;flex-shrink:0;position:relative}
+.t-car{width:104px;height:104px;position:relative;overflow:hidden}
+.t-slides{display:flex;height:100%;transition:transform .3s ease}
+.t-slides img{width:104px;height:104px;object-fit:cover;flex-shrink:0;display:block}
+.t-img .t-img-fallback{width:104px;height:104px;background:var(--grad-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:1.3rem}
+.t-nav{position:absolute;top:50%;transform:translateY(-50%);width:20px;height:20px;border:none;border-radius:50%;background:rgba(13,53,45,.55);color:#fff;font-size:.85rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;z-index:2}
+.t-car:hover .t-nav{opacity:1}
+.t-nav:hover{background:rgba(13,53,45,.85)}
+.t-prev{left:4px}.t-next{right:4px}
+.t-dots{position:absolute;left:0;right:0;bottom:4px;display:flex;justify-content:center;gap:4px;z-index:2}
+.t-dots span{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.55);cursor:pointer}
+.t-dots span.on{background:#fff}
 .t-card-main{flex:1;min-width:0}
 .tour-card .t-head{display:flex;align-items:center;gap:9px;padding:12px 15px 10px}
 .tour-card .t-head .t-icon{width:30px;height:30px;border-radius:9px;background:var(--grad-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
@@ -99,7 +108,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .t-credit{font-family:var(--mono);font-size:.58rem;color:var(--dim);padding:4px 15px 8px}
 .trace{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin:2px 2px 0;padding-left:2px}
 .trace b{font-weight:500;color:#7d948d}
-@media(max-width:480px){.t-img{width:82px}}
+@media(max-width:480px){.t-img,.t-car,.t-slides img,.t-img .t-img-fallback{width:88px;height:88px}}
 
 /* Typing */
 #typing{display:none;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:4px 16px 16px 16px;padding:12px 16px;gap:4px}
@@ -219,8 +228,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
     <p class="route-line">Find the best tour for today's weather and your location.</p>
   </aside>
 
-  <!-- RIGHT COLUMN — chat + pipeline trace -->
-  <div class="right-col">
+  <!-- MIDDLE PANEL — chat -->
   <section class="chat-panel">
     <div class="chat-header">
       <div class="c-icon"><i class="fa-solid fa-sailboat"></i></div>
@@ -249,7 +257,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
     </div>
   </section>
 
-  <!-- PIPELINE TRACE PANEL — how the prompt works -->
+  <!-- RIGHT PANEL — pipeline trace -->
   <section class="trace-panel">
     <div class="trace-header">
       <div class="t-icon"><i class="fa-solid fa-diagram-project"></i></div>
@@ -270,7 +278,6 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
       <details id="rawBox"><summary>View raw model output</summary><pre id="rawPre"></pre></details>
     </div>
   </section>
-  </div>
 </div>
 
 <div class="disclosure">
@@ -332,6 +339,7 @@ function addMsg(html, cls) {
   d.className = 'msg ' + cls;
   d.innerHTML = html;
   chat.appendChild(d);
+  initCarousels(d);
   chat.scrollTop = chat.scrollHeight;
 }
 
@@ -361,25 +369,77 @@ function fetchWithTimeout(url, options, ms) {
 
 // ─── Tour photos (Wikimedia Commons, free licence) — keyed by tour name ───
 const TOUR_IMAGES = {
-  'cliffs of moher guided walk': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Ireland_Cliffs_of_Moher_BW_2025-09-11_14-27-51.jpg/960px-Ireland_Cliffs_of_Moher_BW_2025-09-11_14-27-51.jpg',
-  'aran islands boat trip': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Track_to_D%C3%BAn_Aonghasa%2C_Inis_M%C3%B3r%2C_Aran_Islands_-_geograph.org.uk_-_7884342.jpg/960px-Track_to_D%C3%BAn_Aonghasa%2C_Inis_M%C3%B3r%2C_Aran_Islands_-_geograph.org.uk_-_7884342.jpg',
-  'kylemore abbey garden visit': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Kylemore_Abbey_BW_2025-09-10_15-27-09.jpg/960px-Kylemore_Abbey_BW_2025-09-10_15-27-09.jpg',
-  'dingle peninsula sea safari': 'https://upload.wikimedia.org/wikipedia/commons/3/3b/Dingle_Peninsula%2C_Slea_Head_Drive_-_geograph.org.uk_-_6316961.jpg',
-  'skellig islands eco boat tour': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Skellig_Michael03%28js%29.jpg/960px-Skellig_Michael03%28js%29.jpg',
-  'killarney national park jaunting car': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Ladies_View_in_summer%2C_Ring_of_Kerry%2C_Killarney_National_Park_%28panoramic%29.jpg/960px-Ladies_View_in_summer%2C_Ring_of_Kerry%2C_Killarney_National_Park_%28panoramic%29.jpg',
-  'galway city food walking tour': 'https://upload.wikimedia.org/wikipedia/commons/4/46/Galway_City_Museum_Entrance.jpg',
-  'burren guided nature walk': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/The_Burren%2CCo._Clare%2C_Ireland.jpg/960px-The_Burren%2CCo._Clare%2C_Ireland.jpg',
-  'bunratty castle and folk park': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bunratty_Castle_and_Durty_Nellys%2C_Southeast_view_20150803_1.jpg/960px-Bunratty_Castle_and_Durty_Nellys%2C_Southeast_view_20150803_1.jpg',
-  'wild atlantic surf lesson': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Surf_lessons%2C_strandhill.jpg/960px-Surf_lessons%2C_strandhill.jpg',
-  'sligo coastal cycle tour': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Benbulben_from_Forthill.jpg/960px-Benbulben_from_Forthill.jpg',
-  'achill island photography tour': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Achill_Island%2C_Co._Mayo%2C_Ireland.jpg/960px-Achill_Island%2C_Co._Mayo%2C_Ireland.jpg',
-  'croagh patrick guided hike': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Croagh_Patrick%2C_Mayo%2C_Ireland.jpg/960px-Croagh_Patrick%2C_Mayo%2C_Ireland.jpg',
-  'doolin cave underground tour': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Doolin_cave_stalactite.jpg/960px-Doolin_cave_stalactite.jpg',
-  'slieve league cliffs hike': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Slieve_League._Donegal%2C.jpg/960px-Slieve_League._Donegal%2C.jpg',
-  'glenveagh national park tour': 'https://upload.wikimedia.org/wikipedia/commons/0/03/Glenveagh_Castle_-_geograph.org.uk_-_395086.jpg',
-  'fanad head lighthouse tour': 'https://upload.wikimedia.org/wikipedia/commons/b/b9/Fanad_Head_Lighthouse_-_geograph.org.uk_-_1967281.jpg',
-  'galway bay sunset cruise': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Galway_Bay_and_Co._Clare_%28506274%29_%2826553934032%29.jpg/960px-Galway_Bay_and_Co._Clare_%28506274%29_%2826553934032%29.jpg',
-  'inisheer island cycle day': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Inisheer_-_View_W_from_near_O%27Brien%27s_Castle_-_geograph.org.uk_-_5611706.jpg/960px-Inisheer_-_View_W_from_near_O%27Brien%27s_Castle_-_geograph.org.uk_-_5611706.jpg'
+  'cliffs of moher guided walk': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Ireland_Cliffs_of_Moher_BW_2025-09-11_14-27-51.jpg/960px-Ireland_Cliffs_of_Moher_BW_2025-09-11_14-27-51.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Sea_stack_at_the_Cliffs_of_Moher_-_geograph.org.uk_-_6121584.jpg/960px-Sea_stack_at_the_Cliffs_of_Moher_-_geograph.org.uk_-_6121584.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/0/0b/Ireland_cliffs_of_moher3_Pumbaa80.jpg'
+  ],
+  'aran islands boat trip': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Track_to_D%C3%BAn_Aonghasa%2C_Inis_M%C3%B3r%2C_Aran_Islands_-_geograph.org.uk_-_7884342.jpg/960px-Track_to_D%C3%BAn_Aonghasa%2C_Inis_M%C3%B3r%2C_Aran_Islands_-_geograph.org.uk_-_7884342.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/DUN_AONGHASA_INIS_MOR_ARRAN_ISLANDS_IRELAND_JULY_2013_%289200162956%29.jpg/960px-DUN_AONGHASA_INIS_MOR_ARRAN_ISLANDS_IRELAND_JULY_2013_%289200162956%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Across_the_South_Sound_to_Aran_Islands_-_geograph.org.uk_-_4472572.jpg/960px-Across_the_South_Sound_to_Aran_Islands_-_geograph.org.uk_-_4472572.jpg'
+  ],
+  'kylemore abbey garden visit': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Kylemore_Abbey_BW_2025-09-10_15-27-09.jpg/960px-Kylemore_Abbey_BW_2025-09-10_15-27-09.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/5/55/Kylemore_Abbey%2C_Co._Galway_-_geograph.org.uk_-_1786796.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Kylemore_Abbey_Walled_Garden_BW_2025-09-10_14-57-50.jpg/960px-Kylemore_Abbey_Walled_Garden_BW_2025-09-10_14-57-50.jpg'
+  ],
+  'dingle peninsula sea safari': [
+    'https://upload.wikimedia.org/wikipedia/commons/2/27/Dingle_Harbour_-_geograph.org.uk_-_2572015.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/3/3b/Dingle_Peninsula%2C_Slea_Head_Drive_-_geograph.org.uk_-_6316961.jpg'
+  ],
+  'skellig islands eco boat tour': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Skellig_Michael03%28js%29.jpg/960px-Skellig_Michael03%28js%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Feb1987._Great_Skellig_aka_Sceilig_Mh%C3%B3r_aka_Sceilg_Mh%C3%ADch%C3%ADl_04.jpg/960px-Feb1987._Great_Skellig_aka_Sceilig_Mh%C3%B3r_aka_Sceilg_Mh%C3%ADch%C3%ADl_04.jpg'
+  ],
+  'killarney national park jaunting car': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Ladies_View_in_summer%2C_Ring_of_Kerry%2C_Killarney_National_Park_%28panoramic%29.jpg/960px-Ladies_View_in_summer%2C_Ring_of_Kerry%2C_Killarney_National_Park_%28panoramic%29.jpg'
+  ],
+  'galway city food walking tour': [
+    'https://upload.wikimedia.org/wikipedia/commons/4/46/Galway_City_Museum_Entrance.jpg'
+  ],
+  'burren guided nature walk': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/The_Burren%2CCo._Clare%2C_Ireland.jpg/960px-The_Burren%2CCo._Clare%2C_Ireland.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/9/9c/Poulnabrone_Dolmen%2C_Burren_-_geograph.org.uk_-_68955.jpg'
+  ],
+  'bunratty castle and folk park': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bunratty_Castle_and_Durty_Nellys%2C_Southeast_view_20150803_1.jpg/960px-Bunratty_Castle_and_Durty_Nellys%2C_Southeast_view_20150803_1.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Bunratty_Folk_Park_-_geograph.org.uk_-_6443669.jpg/960px-Bunratty_Folk_Park_-_geograph.org.uk_-_6443669.jpg'
+  ],
+  'wild atlantic surf lesson': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Surf_lessons%2C_strandhill.jpg/960px-Surf_lessons%2C_strandhill.jpg'
+  ],
+  'sligo coastal cycle tour': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Benbulben_from_Forthill.jpg/960px-Benbulben_from_Forthill.jpg'
+  ],
+  'achill island photography tour': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Achill_Island%2C_Co._Mayo%2C_Ireland.jpg/960px-Achill_Island%2C_Co._Mayo%2C_Ireland.jpg'
+  ],
+  'croagh patrick guided hike': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Croagh_Patrick%2C_Mayo%2C_Ireland.jpg/960px-Croagh_Patrick%2C_Mayo%2C_Ireland.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Clew_Bay_Croagh_Patrick.jpg/960px-Clew_Bay_Croagh_Patrick.jpg'
+  ],
+  'doolin cave underground tour': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Doolin_cave_stalactite.jpg/960px-Doolin_cave_stalactite.jpg'
+  ],
+  'slieve league cliffs hike': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Slieve_League._Donegal%2C.jpg/960px-Slieve_League._Donegal%2C.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Slieve_League_Cliffs%2C_County_Donegal%2C_Ireland6.jpg/960px-Slieve_League_Cliffs%2C_County_Donegal%2C_Ireland6.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/6/61/Muckross_Head_Donegal_-_geograph.org.uk_-_130553.jpg'
+  ],
+  'glenveagh national park tour': [
+    'https://upload.wikimedia.org/wikipedia/commons/0/03/Glenveagh_Castle_-_geograph.org.uk_-_395086.jpg'
+  ],
+  'fanad head lighthouse tour': [
+    'https://upload.wikimedia.org/wikipedia/commons/b/b9/Fanad_Head_Lighthouse_-_geograph.org.uk_-_1967281.jpg'
+  ],
+  'galway bay sunset cruise': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Galway_Bay_and_Co._Clare_%28506274%29_%2826553934032%29.jpg/960px-Galway_Bay_and_Co._Clare_%28506274%29_%2826553934032%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/9/9d/Salthill_Galway_Bay_-_geograph.org.uk_-_1366306.jpg'
+  ],
+  'inisheer island cycle day': [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Inisheer_-_View_W_from_near_O%27Brien%27s_Castle_-_geograph.org.uk_-_5611706.jpg/960px-Inisheer_-_View_W_from_near_O%27Brien%27s_Castle_-_geograph.org.uk_-_5611706.jpg'
+  ]
 };
 
 function imageFor(name) {
@@ -393,11 +453,40 @@ function imageFor(name) {
   return null;
 }
 
+// Wire up a carousel: arrows, dots, swipe
+function initCarousels(root) {
+  root.querySelectorAll('.t-car').forEach(function(car) {
+    const slides = car.querySelector('.t-slides');
+    const imgs = slides.querySelectorAll('img');
+    if (imgs.length < 2) return;
+    const dots = car.querySelectorAll('.t-dots span');
+    const prev = car.querySelector('.t-prev');
+    const next = car.querySelector('.t-next');
+    let i = 0;
+    const go = function(n) {
+      i = (n + imgs.length) % imgs.length;
+      slides.style.transform = 'translateX(-' + i * 100 + '%)';
+      dots.forEach(function(d, k) { d.classList.toggle('on', k === i); });
+    };
+    prev.addEventListener('click', function() { go(i - 1); });
+    next.addEventListener('click', function() { go(i + 1); });
+    dots.forEach(function(d, k) { d.addEventListener('click', function() { go(k); }); });
+    let sx = null;
+    slides.addEventListener('pointerdown', function(e) { sx = e.clientX; });
+    slides.addEventListener('pointerup', function(e) {
+      if (sx === null) return;
+      const dx = e.clientX - sx;
+      if (Math.abs(dx) > 30) go(i + (dx < 0 ? 1 : -1));
+      sx = null;
+    });
+  });
+}
+
 // Card renderer fed by the backend's structured tour data
 function tourCard(t) {
   const weatherNum = t.weather_today ? parseInt(String(t.weather_today).match(/\d+/), 10) : NaN;
   const warn = !isNaN(weatherNum) && weatherNum >= 50;
-  const img = imageFor(t.name);
+  const imgs = imageFor(t.name);
   const rows = [
     ['📍', 'Location', t.location, false],
     ['💶', 'Price', t.price, false],
@@ -406,9 +495,24 @@ function tourCard(t) {
     ['✅', 'Availability', t.availability, false],
     ['🪑', 'Slots Left', t.slots_left, false]
   ].filter(r => r[2] !== undefined && r[2] !== null && r[2] !== '');
-  const imageHtml = img
-    ? '<div class="t-img"><img src="' + img + '" alt="' + escapeHtml(t.name) + '" loading="lazy" onerror="this.parentNode.innerHTML=\'<div class=t-img-fallback><i class=\\\'fa-solid fa-location-dot\\\'></i></div>\'"></div>'
-    : '<div class="t-img"><div class="t-img-fallback"><i class="fa-solid fa-location-dot"></i></div></div>';
+  let imageHtml;
+  if (imgs && imgs.length) {
+    const carousel = imgs.length > 1;
+    imageHtml = '<div class="t-img"><div class="t-car">' +
+      '<div class="t-slides">' + imgs.map(function(u) {
+        return '<img src="' + u + '" alt="' + escapeHtml(t.name) + '" loading="lazy" onerror="this.style.display=\'none\'">';
+      }).join('') + '</div>' +
+      (carousel
+        ? '<button class="t-nav t-prev" aria-label="Previous photo">‹</button>' +
+          '<button class="t-nav t-next" aria-label="Next photo">›</button>' +
+          '<div class="t-dots">' + imgs.map(function(_, k) {
+            return '<span class="' + (k === 0 ? 'on' : '') + '"></span>';
+          }).join('') + '</div>'
+        : '') +
+      '</div></div>';
+  } else {
+    imageHtml = '<div class="t-img"><div class="t-img-fallback"><i class="fa-solid fa-location-dot"></i></div></div>';
+  }
   return '<div class="tour-card">' + imageHtml +
     '<div class="t-card-main">' +
     '<div class="t-head"><div class="t-icon"><i class="fa-solid fa-umbrella-beach"></i></div>' +
@@ -417,7 +521,7 @@ function tourCard(t) {
       '<div class="t-row"><span class="t-label"><span>' + r[0] + '</span>' + r[1] + '</span>' +
       '<span class="t-value ' + (r[3] ? 'warn' : 'good') + '">' + escapeHtml(String(r[2])) + '</span></div>'
     ).join('') + '</div>' +
-    (img ? '<div class="t-credit">📷 photo: Wikimedia Commons</div>' : '') +
+    (imgs && imgs.length ? '<div class="t-credit">📷 photo: Wikimedia Commons</div>' : '') +
     '</div></div>';
 }
 
