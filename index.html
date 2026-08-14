@@ -526,16 +526,15 @@ function tourCard(t) {
 }
 
 // ─── Browser-side weather (used when the backend's Open-Meteo is rate-limited) ───
-async function browserWeather() {
+async function browserWeather(tours) {
   try {
-    const tours = (await (await fetchWithTimeout(BACKEND_URL + '/api/tours', {}, 30000)).json()).tours;
     const seen = new Map();
     for (const t of tours) { const k = t.latitude + ',' + t.longitude; if (!seen.has(k)) seen.set(k, t); }
     const locs = [...seen.values()];
     const url = 'https://api.open-meteo.com/v1/forecast?latitude=' +
       locs.map(l => l.latitude).join(',') + '&longitude=' + locs.map(l => l.longitude).join(',') +
       '&daily=precipitation_probability_max,temperature_2m_max&timezone=auto&forecast_days=7';
-    const res = await fetchWithTimeout(url, {}, 30000);
+    const res = await fetchWithTimeout(url, {}, 15000);
     if (!res.ok) return null;
     const data = await res.json();
     const map = {};
@@ -563,11 +562,11 @@ async function handleSend(text) {
   showTyping();
   const t0 = Date.now();
   try {
-    // Step 1 — live catalogue + weather (browser-side for rate-limit resilience)
+    // Step 1 — live catalogue + forecast (browser-side for rate-limit resilience)
     addStep('📊', 'Live data', 'tours + forecast...', 'data');
     const toursRes = await fetchWithTimeout(BACKEND_URL + '/api/tours', {}, 30000).catch(() => null);
     const tours = toursRes && toursRes.ok ? (await toursRes.json()).tours : [];
-    const weather = await browserWeather();
+    const weather = await browserWeather(tours);
     addStep('✅', 'Live data', tours.length + ' tours · ' + (weather ? Object.keys(weather).length + ' forecasts' : 'no weather'), 'done');
     addArrow();
 
@@ -577,7 +576,7 @@ async function handleSend(text) {
     const res = await fetchWithTimeout(BACKEND_URL + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [{ role: 'user', content: query }], weather })
+      body: JSON.stringify({ messages: [{ role: 'user', content: query }], weather, tours })
     }, 60000);
     if (!res.ok) throw new Error('backend returned HTTP ' + res.status);
     const chatMs = Date.now() - chatT0;
@@ -631,6 +630,10 @@ document.querySelectorAll('.chip').forEach(el => {
     sendBtn.click();
   });
 });
+
+// Keep the free-tier backend warm: ping on load + every 6 min while the page is open
+fetch(BACKEND_URL + '/api/health').catch(() => {});
+setInterval(() => { fetch(BACKEND_URL + '/api/health').catch(() => {}); }, 6 * 60 * 1000);
 </script>
 </body>
 </html>

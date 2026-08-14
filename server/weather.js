@@ -1,6 +1,6 @@
 const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast';
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 2;
 
 const cache = new Map();
 
@@ -20,7 +20,7 @@ async function fetchBatch(coords, attempt = 1) {
 
   const res = await fetch(url);
   if (res.status === 429 && attempt < MAX_RETRIES) {
-    await new Promise(r => setTimeout(r, 1500 * attempt));
+    await new Promise(r => setTimeout(r, 1000 * attempt));
     return fetchBatch(coords, attempt + 1);
   }
   if (!res.ok) {

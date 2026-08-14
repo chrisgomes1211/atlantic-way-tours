@@ -1,4 +1,7 @@
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSBM94SDaxtp9LNOwEiwNDq0rZECZqybNtmNg9dtw8XSP8knAkxGTIzLbhl-8oPVGgLB_9f7-0hz1X3/pub?output=csv';
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
+let cache = { at: 0, data: null };
 
 function parseCSVLine(line) {
   const result = [];
@@ -45,10 +48,12 @@ function normalize(rows) {
 }
 
 export async function fetchTours() {
+  if (cache.data && Date.now() - cache.at < CACHE_TTL_MS) return cache.data;
   const res = await fetch(SHEET_URL);
   if (!res.ok) throw new Error(`Sheet fetch failed (${res.status})`);
   const text = await res.text();
   const rows = parseCSV(text);
   if (rows.length === 0) throw new Error('Sheet returned no rows');
-  return normalize(rows);
+  cache = { at: Date.now(), data: normalize(rows) };
+  return cache.data;
 }

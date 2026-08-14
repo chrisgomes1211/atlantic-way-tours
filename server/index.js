@@ -67,41 +67,35 @@ function buildChatContext(tours, weather) {
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { messages, weather: clientWeather } = req.body;
+    const { messages, weather: clientWeather, tours: clientTours } = req.body;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'messages array is required' });
     }
 
     const t0 = Date.now();
 
-    // Live data at query time — each failure is tolerated separately
-    let tours = [];
-    let weather = {};
+    // Live data at query time — each failure is tolerated separately.
+    // Client-supplied tours/weather (fetched browser-side) are used when valid,
+    // so the server never re-fetches the sheet or Open-Meteo per message.
+    let tours = Array.isArray(clientTours) && clientTours.length ? clientTours : [];
+    let weather = (clientWeather && typeof clientWeather === 'object') ? clientWeather : {};
     const tools = [];
-    try {
-      tours = await fetchTours();
-      tools.push('search_catalogue');
-    } catch (e) {
-      console.error('Tours unavailable:', e.message.slice(0, 100));
+
+    if (!tours.length || Object.keys(weather).length === 0) {
+      const [fetchedTours, fetchedWeather] = await Promise.allSettled([
+        fetchTours(),
+        fetchWeather(tours.length ? tours : [{ latitude: 53.2707, longitude: -9.0568 }])
+      ]);
+      if (!tours.length && fetchedTours.status === 'fulfilled') tours = fetchedTours.value;
+      if (fetchedTours.status === 'fulfilled') tools.push('search_catalogue');
+      if (Object.keys(weather).length === 0 && fetchedWeather.status === 'fulfilled') weather = fetchedWeather.value;
+      if (fetchedWeather.status === 'fulfilled') tools.push('weather_forecast');
+      if (fetchedTours.status === 'rejected') console.error('Tours unavailable:', fetchedTours.reason.message.slice(0, 100));
+      if (fetchedWeather.status === 'rejected') console.error('Weather unavailable:', fetchedWeather.reason.message.slice(0, 100));
     }
-    try {
-      weather = await fetchWeather(tours.length ? tours : [{ latitude: 53.2707, longitude: -9.0568 }]);
-      tools.push('weather_forecast');
-    } catch (e) {
-      if (clientWeather && typeof clientWeather === 'object') {
-        const filtered = {};
-        for (const t of tours) {
-          const w = clientWeather[`${t.latitude},${t.longitude}`];
-          if (w && w.forecast) filtered[`${t.latitude},${t.longitude}`] = { forecast: w.forecast.slice(0, 4) };
-        }
-        if (Object.keys(filtered).length) {
-          weather = filtered;
-          tools.push('weather_forecast');
-          console.log('Used client-provided weather (' + Object.keys(filtered).length + ' locations)');
-        }
-      }
-      if (!tools.includes('weather_forecast')) console.error('Weather unavailable:', e.message.slice(0, 100));
-    }
+
+    if (tours.length) tools.push('search_catalogue');
+    if (Object.keys(weather).length) tools.push('weather_forecast');
 
     const system = 'You are the weather-smart booking assistant for Atlantic Way Tours, a tour operator along Ireland\'s Wild Atlantic Way.\n\n' +
       (tours.length
