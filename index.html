@@ -304,6 +304,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
       <span class="chip" data-cmd="Which cliff walks are good tomorrow?">Cliff walks</span>
       <span class="chip" data-cmd="What indoor options are there today?">Indoor options</span>
       <span class="chip" data-cmd="Any special offers right now?">Special offers</span>
+      <span class="chip" data-cmd="Run the analysis">Run the analysis</span>
     </div>
 
     <div class="input-bar">
@@ -675,10 +676,22 @@ async function browserWeather(tours) {
 }
 
 // ═══ SEND HANDLER — live backend (structured cards + tools trace) ═══
+// Explicit commands that launch the 5-agent pipeline instead of the chat LLM
+const PIPELINE_TRIGGERS = /\b(run (the )?(pipeline|agents|analysis|full analysis|agent pipeline)|analyze (our|the) business)\b/i;
+
 async function handleSend(text) {
   const query = text.trim();
   if (!query) return;
   addMsg(escapeHtml(query), 'user');
+
+  if (PIPELINE_TRIGGERS.test(query)) {
+    showTyping();
+    switchAgentsTab();
+    hideTyping();
+    startAgentRun();
+    return;
+  }
+
   showTyping();
   const t0 = Date.now();
   try {
@@ -787,6 +800,12 @@ function agentStatusText(s) {
   return '✅ ' + (s.llmMs ? (s.llmMs / 1000).toFixed(1) + 's' : 'done');
 }
 
+function switchAgentsTab() {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'agents'));
+  agentsPaneEl.style.display = 'flex';
+  tracePaneEl.style.display = 'none';
+}
+
 function renderAgentRun(run) {
   agentsSteps.innerHTML = run.steps.map(s => {
     const isData = s.agent === 'live-data';
@@ -830,7 +849,7 @@ async function pollAgentRun(runId) {
   agentsPoll = setInterval(tick, 2000);
 }
 
-runAgentsBtn.addEventListener('click', async () => {
+async function startAgentRun() {
   runAgentsBtn.disabled = true;
   runAgentsBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Starting...';
   agentsSteps.innerHTML = '<div class="agents-empty"><p>Gathering live data + starting the 5-agent organisation…</p></div>';
@@ -856,7 +875,9 @@ runAgentsBtn.addEventListener('click', async () => {
     runAgentsBtn.disabled = false;
     runAgentsBtn.innerHTML = '<i class="fa-solid fa-play"></i> Run pipeline';
   }
-});
+}
+
+runAgentsBtn.addEventListener('click', startAgentRun);
 
 // Keep the free-tier backend warm: ping on load + every 6 min while the page is open
 fetch(BACKEND_URL + '/api/health').catch(() => {});
