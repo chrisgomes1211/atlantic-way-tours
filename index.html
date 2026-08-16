@@ -832,13 +832,21 @@ async function pollAgentRun(runId) {
 
 runAgentsBtn.addEventListener('click', async () => {
   runAgentsBtn.disabled = true;
-  runAgentsBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
-  agentsSteps.innerHTML = '<div class="agents-empty"><p>Starting the 5-agent organisation…</p></div>';
+  runAgentsBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Starting...';
+  agentsSteps.innerHTML = '<div class="agents-empty"><p>Gathering live data + starting the 5-agent organisation…</p></div>';
   try {
+    let clientWeather = null;
+    try {
+      const tRes = await fetchWithTimeout(BACKEND_URL + '/api/tours', {}, 30000);
+      if (tRes.ok) {
+        const tt = (await tRes.json()).tours;
+        clientWeather = await browserWeather(tt);
+      }
+    } catch { /* server weather fallback remains */ }
     const startRes = await fetchWithTimeout(BACKEND_URL + '/api/orchestrate/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
+      body: JSON.stringify({ weather: clientWeather || {} })
     }, 30000);
     if (!startRes.ok) throw new Error('start HTTP ' + startRes.status);
     const { runId } = await startRes.json();

@@ -198,17 +198,35 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-async function buildLiveDataPackage() {
+async function buildLiveDataPackage(clientWeather) {
   const tours = await fetchTours();
-  const weather = await fetchWeather(tours);
+  let weather = {};
+  let weatherSource = '';
+  try {
+    weather = await fetchWeather(tours);
+    weatherSource = 'server';
+  } catch (e) {
+    if (clientWeather && typeof clientWeather === 'object') {
+      const filtered = {};
+      for (const t of tours) {
+        const w = clientWeather[`${t.latitude},${t.longitude}`];
+        if (w && w.forecast) filtered[`${t.latitude},${t.longitude}`] = { forecast: w.forecast.slice(0, 4) };
+      }
+      if (Object.keys(filtered).length) {
+        weather = filtered;
+        weatherSource = 'client';
+      }
+    }
+    if (!weatherSource) console.error('Weather unavailable for pipeline:', e.message.slice(0, 100));
+  }
   const byLoc = tours.map(t => {
     const w = weather[`${t.latitude},${t.longitude}`];
     const fc = w && w.forecast ? w.forecast.slice(0, 3).map(d =>
       d.date + ' precip ' + d.precipitation_probability_max + '% max ' + d.temperature_2m_max + 'C'
-    ).join(' | ') : 'no forecast';
+    ).join(' | ') : 'forecast unavailable';
     return `- [${t.id}] ${t.name} (${t.location}, ${t.type}, weather_sensitivity ${t.weather_sensitive}, EUR ${t.price_eur}, ${t.duration}, slots ${t.slots_available}/${t.capacity}, ${t.availability}${t.special_offer ? ', OFFER: ' + t.special_offer : ''}) — ${t.description} | Forecast: ${fc}`;
   });
-  return `## LIVE DATA PACKAGE\nTours fetched live: ${tours.length}\nWeather locations: ${Object.keys(weather).length}\n\n${byLoc.join('\n')}`;
+  return `## LIVE DATA PACKAGE\nTours fetched live: ${tours.length}\nWeather locations: ${Object.keys(weather).length}${weatherSource ? ' (source: ' + weatherSource + ')' : ''}\n\n${byLoc.join('\n')}`;
 }
 
 // ─── Agent pipeline (shared runner + run store) ───
@@ -240,7 +258,7 @@ async function runPipeline(run) {
   try {
     let previousOutput = run.kickoff;
     try {
-      const liveData = await buildLiveDataPackage();
+      const liveData = await buildLiveDataPackage(run.clientWeather);
       previousOutput = run.kickoff + '\n\n' + liveData;
       run.steps.push({ step: 0, agent: 'live-data', label: 'Live data', status: 'done', detail: liveData.split('\n')[2], output: liveData });
     } catch (e) {
@@ -309,6 +327,7 @@ app.post('/api/orchestrate/start', async (req, res) => {
       status: 'running',
       startedAt: new Date().toISOString(),
       kickoff: req.body?.prompt || 'Run the full analysis for Atlantic Way Tours: weather-driven revenue loss and the weather-adaptive tour recommender opportunity.',
+      clientWeather: req.body?.weather,
       agents: files,
       steps: []
     };
@@ -333,7 +352,7 @@ app.post('/api/orchestrate', async (req, res) => {
 
     const kickoff = req.body?.prompt || 'Run the full analysis for Atlantic Way Tours: weather-driven revenue loss and the weather-adaptive tour recommender opportunity.';
     const runId = Math.random().toString(36).slice(2, 10);
-    const run = { id: runId, status: 'running', startedAt: new Date().toISOString(), kickoff, agents: files, steps: [] };
+    const run = { id: runId, status: 'running', startedAt: new Date().toISOString(), kickoff, clientWeather: req.body?.weather, agents: files, steps: [] };
     runs.set(runId, run);
     await runPipeline(run);
     res.json({ status: run.status, log: run.steps });
