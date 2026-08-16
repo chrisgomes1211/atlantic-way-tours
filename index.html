@@ -4,8 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Atlantic Pathfinder — Wild Atlantic Chat</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script>
+  if (localStorage.getItem('awt-theme') === 'dark' ||
+      (!localStorage.getItem('awt-theme') && matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -29,10 +39,33 @@
   --radius-sm:10px;
   --shadow:0 6px 28px rgba(16,52,46,.07);
   --shadow-lg:0 14px 48px rgba(16,52,46,.10);
-  --serif:Georgia,'Times New Roman',serif;
+  --serif:'Fraunces',Georgia,'Times New Roman',serif;
   --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --mono:'JetBrains Mono',ui-monospace,monospace;
 }
+/* Dark theme — full variable override */
+[data-theme="dark"]{
+  --accent:#4ec3a4;
+  --accent-2:#2fb08f;
+  --accent-glow:rgba(78,195,164,.14);
+  --grad:linear-gradient(135deg,#0e5d6b,#17655a 55%,#0f8f7a);
+  --grad-soft:linear-gradient(135deg,rgba(78,195,164,.16),rgba(47,176,143,.22));
+  --ink:#d9e8e3;
+  --ink-2:#c2d8d1;
+  --header-grad:linear-gradient(135deg,#09281f,#0d352d 60%,#123f38);
+  --muted:#93aaa3;
+  --dim:#6f8780;
+  --sand:#0f1c19;
+  --surface:#15241f;
+  --line:#23372f;
+  --line-soft:#1c2e27;
+  --chip-bg:#1a2d26;
+  --shadow:0 6px 28px rgba(0,0,0,.35);
+  --shadow-lg:0 14px 48px rgba(0,0,0,.45);
+}
+[data-theme="dark"] .msg.user{background:linear-gradient(135deg,#0e5d6b,#17655a 55%,#0f8f7a)}
+[data-theme="dark"] .t-dist.muted{background:rgba(255,255,255,.12);color:#cfe3dc}
+[data-theme="dark"] .sidebar-hero .hero-overlay{background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.7))}
 body{
   font-family:var(--sans);color:var(--ink);min-height:100vh;
   background-color:var(--sand);
@@ -60,6 +93,8 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .route-label{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
 .route-label .dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.18)}
 .route-line{font-size:.82rem;color:var(--muted);line-height:1.5;margin-top:6px}
+.theme-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--chip-bg);border:1px solid var(--line);color:var(--accent);font-family:var(--sans);font-size:.74rem;font-weight:700;padding:9px 14px;border-radius:100px;cursor:pointer;transition:all .18s;align-self:flex-start}
+.theme-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 /* ═══ RIGHT PANEL — chat ═══ */
 .chat-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;display:flex;flex-direction:column}
@@ -67,8 +102,11 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .chat-header .c-icon{width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0}
 .chat-header .c-title{font-size:.98rem;font-weight:800;color:#fff;letter-spacing:-.2px}
 .chat-header .c-sub{font-size:.72rem;color:rgba(255,255,255,.66);margin-top:1px}
-.chat-header .c-pill{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);color:#e8f5f0;font-size:.68rem;font-weight:700;padding:5px 12px;border-radius:100px;white-space:nowrap}
+.chat-header .c-pill{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);color:#e8f5f0;font-size:.68rem;font-weight:700;padding:5px 12px;border-radius:100px;white-space:nowrap;cursor:help}
 .chat-header .c-pill .dot{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 6px rgba(52,211,153,.8)}
+.h-btn{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);color:#e8f5f0;font-size:.78rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .18s,transform .15s}
+.h-btn:hover{background:rgba(255,255,255,.22);transform:translateY(-1px)}
+.h-btn.on{background:#34d399;color:#09281f}
 
 .chat{height:460px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;background:var(--sand)}
 .chat::-webkit-scrollbar{width:5px}
@@ -83,16 +121,19 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .tour-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow);overflow:hidden;margin-bottom:6px}
 .t-img{width:100%;aspect-ratio:16/9;flex-shrink:0;position:relative}
 .t-car{width:100%;height:100%;position:relative;overflow:hidden}
-.t-slides{display:flex;height:100%;transition:transform .3s ease}
-.t-slides img{width:100%;height:100%;object-fit:cover;flex-shrink:0;display:block}
+.t-car.swiper{width:100%;height:100%}
+.t-car .swiper-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.t-car .swiper-slide{height:auto}
 .t-img .t-img-fallback{width:100%;height:100%;background:var(--grad-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:2rem}
-.t-nav{position:absolute;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;border-radius:50%;background:rgba(13,53,45,.55);color:#fff;font-size:1rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;z-index:2}
-.t-car:hover .t-nav{opacity:1}
-.t-nav:hover{background:rgba(13,53,45,.85)}
-.t-prev{left:8px}.t-next{right:8px}
-.t-dots{position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:center;gap:5px;z-index:2}
-.t-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.55);cursor:pointer}
-.t-dots span.on{background:#fff}
+/* Swiper carousel */
+.t-car.swiper{width:100%;height:100%}
+.t-car .swiper-button-prev,.t-car .swiper-button-next{width:26px;height:26px;background:rgba(13,53,45,.55);border-radius:50%;color:#fff;opacity:0;transition:opacity .2s}
+.t-car:hover .swiper-button-prev,.t-car:hover .swiper-button-next{opacity:1}
+.t-car .swiper-button-prev::after,.t-car .swiper-button-next::after{font-size:.8rem;font-weight:900}
+.t-car .swiper-button-prev{left:6px}.t-car .swiper-button-next{right:6px}
+.t-car .swiper-pagination{position:absolute;bottom:4px}
+.t-car .swiper-pagination-bullet{width:5px;height:5px;background:rgba(255,255,255,.55);opacity:1}
+.t-car .swiper-pagination-bullet-active{background:#fff}
 .t-card-main{flex:1;min-width:0}
 .tour-card .t-head{display:flex;align-items:center;gap:9px;padding:12px 15px 10px}
 .tour-card .t-head .t-icon{width:30px;height:30px;border-radius:9px;background:var(--grad-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
@@ -107,10 +148,11 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .tour-card .t-row .t-value.good{color:var(--accent)}
 .t-credit{font-family:var(--mono);font-size:.58rem;color:var(--dim);padding:4px 15px 8px}
 
-/* Inline Google map strip + distance chip */
-.t-map{position:relative;border-top:1px solid var(--line-soft)}
-.t-map iframe{width:100%;height:120px;border:0;display:block;background:var(--chip-bg)}
-.t-dist{position:absolute;top:8px;left:8px;z-index:2;background:rgba(13,53,45,.88);color:#fff;font-size:.64rem;font-weight:700;padding:5px 11px;border-radius:100px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.28);font-family:var(--sans);white-space:nowrap}
+/* Inline Leaflet map strip + distance chip */
+.t-map{position:relative;border-top:1px solid var(--line-soft);z-index:0}
+.t-map-js{width:100%;height:120px;background:var(--chip-bg);position:relative;z-index:0}
+.t-map-js .leaflet-control-attribution{font-size:8px}
+.t-dist{position:absolute;top:8px;left:8px;z-index:1000;background:rgba(13,53,45,.88);color:#fff;font-size:.64rem;font-weight:700;padding:5px 11px;border-radius:100px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.28);font-family:var(--sans);white-space:nowrap}
 .t-dist.muted{background:rgba(255,255,255,.94);color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.16)}
 .trace{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin:2px 2px 0;padding-left:2px}
 .trace b{font-weight:500;color:#7d948d}
@@ -137,6 +179,10 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .send-btn{width:46px;height:46px;border-radius:50%;border:none;background:var(--grad);color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(27,107,90,.35);transition:transform .15s,opacity .15s}
 .send-btn:hover{transform:translateY(-1px) scale(1.04)}
 .send-btn:disabled{opacity:.45;cursor:default;transform:none}
+.mic-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--accent);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s}
+.mic-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mic-btn.listening{background:#ef4444;color:#fff;border-color:#ef4444;animation:pulseRed 1.2s ease-in-out infinite}
+@keyframes pulseRed{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.45)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
 
 /* ═══ SIDEBAR HERO ═══ */
 .sidebar-hero{position:relative;border-radius:16px;overflow:hidden;height:150px;box-shadow:var(--shadow);flex-shrink:0}
@@ -281,6 +327,8 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
     <div class="divider"></div>
     <div class="route-label"><span class="dot"></span> Suggested Route</div>
     <p class="route-line">Find the best tour for today's weather and your location.</p>
+    <div class="divider"></div>
+    <button class="theme-btn" id="themeBtn"><i class="fa-solid fa-moon"></i> Dark mode</button>
   </aside>
 
   <!-- MIDDLE PANEL — chat -->
@@ -291,7 +339,8 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
         <div class="c-title">Tour Assistant</div>
         <div class="c-sub">Live forecasts, availability, and honest recommendations.</div>
       </div>
-      <div class="c-pill"><span class="dot"></span>Live tools armed</div>
+      <div class="c-pill" data-tip="Live sources: Google Sheets catalogue + Open-Meteo forecasts"><span class="dot"></span>Live tools armed</div>
+      <button class="h-btn" id="speakBtn" title="Toggle spoken replies"><i class="fa-solid fa-volume-xmark"></i></button>
     </div>
 
     <div class="chat" id="chat">
@@ -309,6 +358,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 
     <div class="input-bar">
       <input type="text" id="input" placeholder="Ask about tours, prices, weather, or availability...">
+      <button class="mic-btn" id="micBtn" title="Voice input"><i class="fa-solid fa-microphone"></i></button>
       <button class="send-btn" id="send" aria-label="Send"><i class="fa-solid fa-arrow-up"></i></button>
     </div>
   </section>
@@ -533,33 +583,41 @@ function imageFor(name) {
   return ['https://picsum.photos/seed/awt-' + seed + '/800/450'];
 }
 
-// Wire up a carousel: arrows, dots, swipe
+// Wire up the interactive widgets inside a freshly added message:
+// Swiper carousels, Leaflet maps, and Tippy tooltips
 function initCarousels(root) {
-  root.querySelectorAll('.t-car').forEach(function(car) {
-    const slides = car.querySelector('.t-slides');
-    const imgs = slides.querySelectorAll('img');
-    if (imgs.length < 2) return;
-    const dots = car.querySelectorAll('.t-dots span');
-    const prev = car.querySelector('.t-prev');
-    const next = car.querySelector('.t-next');
-    let i = 0;
-    const go = function(n) {
-      i = (n + imgs.length) % imgs.length;
-      slides.style.transform = 'translateX(-' + i * 100 + '%)';
-      dots.forEach(function(d, k) { d.classList.toggle('on', k === i); });
-    };
-    prev.addEventListener('click', function() { go(i - 1); });
-    next.addEventListener('click', function() { go(i + 1); });
-    dots.forEach(function(d, k) { d.addEventListener('click', function() { go(k); }); });
-    let sx = null;
-    slides.addEventListener('pointerdown', function(e) { sx = e.clientX; });
-    slides.addEventListener('pointerup', function(e) {
-      if (sx === null) return;
-      const dx = e.clientX - sx;
-      if (Math.abs(dx) > 30) go(i + (dx < 0 ? 1 : -1));
-      sx = null;
+  if (window.Swiper) {
+    root.querySelectorAll('.t-car.swiper').forEach(function(car) {
+      new Swiper(car, {
+        slidesPerView: 1,
+        loop: false,
+        speed: 320,
+        pagination: { el: car.querySelector('.swiper-pagination'), clickable: true },
+        navigation: { nextEl: car.querySelector('.swiper-button-next'), prevEl: car.querySelector('.swiper-button-prev') }
+      });
     });
-  });
+  }
+  if (window.L) {
+    root.querySelectorAll('.t-map-js').forEach(function(el) {
+      const lat = parseFloat(el.dataset.lat);
+      const lon = parseFloat(el.dataset.lon);
+      const map = L.map(el, { zoomControl: false }).setView([lat, lon], 12);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+      L.marker([lat, lon]).addTo(map).bindPopup('<b>' + escapeHtml(el.dataset.name || '') + '</b>').openPopup();
+      if (userPos && el.dataset.line === '1') {
+        L.polyline([[userPos.lat, userPos.lon], [lat, lon]], { color: '#115e6b', weight: 3, dashArray: '6 6' }).addTo(map);
+      }
+      setTimeout(function() { map.invalidateSize(); }, 60);
+    });
+  }
+  if (window.tippy) {
+    root.querySelectorAll('[data-tip]').forEach(function(el) {
+      tippy(el, { content: el.dataset.tip, arrow: true, delay: [180, 0], allowHTML: false });
+    });
+  }
 }
 
 // ─── User location & straight-line distance (free, browser-side) ───
@@ -616,17 +674,13 @@ function tourCard(t, coords) {
   let imageHtml;
   if (imgs && imgs.length) {
     const carousel = imgs.length > 1;
-    imageHtml = '<div class="t-img"><div class="t-car">' +
-      '<div class="t-slides">' + imgs.map(function(u) {
-        return '<img src="' + u + '" alt="' + escapeHtml(t.name) + '" loading="lazy" onerror="imgFail(this)">';
-      }).join('') + '</div>' +
-      (carousel
-        ? '<button class="t-nav t-prev" aria-label="Previous photo">‹</button>' +
-          '<button class="t-nav t-next" aria-label="Next photo">›</button>' +
-          '<div class="t-dots">' + imgs.map(function(_, k) {
-            return '<span class="' + (k === 0 ? 'on' : '') + '"></span>';
-          }).join('') + '</div>'
-        : '') +
+    imageHtml = '<div class="t-img"><div class="t-car' + (carousel ? ' swiper' : '') + '">' +
+      (carousel ? '<div class="swiper-wrapper">' : '') +
+      imgs.map(function(u) {
+        const slide = '<img src="' + u + '" alt="' + escapeHtml(t.name) + '" loading="lazy" onerror="imgFail(this)">';
+        return carousel ? '<div class="swiper-slide">' + slide + '</div>' : slide;
+      }).join('') +
+      (carousel ? '</div>' + '<div class="swiper-button-prev"></div><div class="swiper-button-next"></div><div class="swiper-pagination"></div>' : '') +
       '</div></div>';
   } else {
     imageHtml = '<div class="t-img"><div class="t-img-fallback"><i class="fa-solid fa-location-dot"></i></div></div>';
@@ -637,16 +691,15 @@ function tourCard(t, coords) {
       ? '<span class="t-dist"><i class="fa-solid fa-location-arrow"></i> ' + escapeHtml(coords.distText) + '</span>'
       : '<span class="t-dist muted"><i class="fa-solid fa-location-dot"></i> ' + (geoState === 'denied' ? 'Location off — no distance' : 'Enable location for distance') + '</span>';
     mapHtml = '<div class="t-map">' + chip +
-      '<iframe src="https://maps.google.com/maps?q=' + coords.lat + ',' + coords.lon + '&z=12&output=embed" ' +
-      'loading="lazy" title="Map: ' + escapeHtml(t.name) + '"></iframe></div>';
+      '<div class="t-map-js" data-lat="' + coords.lat + '" data-lon="' + coords.lon + '" data-name="' + escapeHtml(t.name) + '" data-line="' + (coords.distText ? '1' : '0') + '"></div></div>';
   }
-  return '<div class="tour-card">' + imageHtml + mapHtml +
+  return '<div class="tour-card animate__animated animate__zoomIn">' + imageHtml + mapHtml +
     '<div class="t-card-main">' +
     '<div class="t-head"><div class="t-icon"><i class="fa-solid fa-umbrella-beach"></i></div>' +
     '<div><div class="t-title">Tour Details</div><div class="t-name">' + escapeHtml(t.name || '') + '</div></div></div>' +
     '<div class="t-rows">' + rows.map(r =>
       '<div class="t-row"><span class="t-label"><span>' + r[0] + '</span>' + r[1] + '</span>' +
-      '<span class="t-value ' + (r[3] ? 'warn' : 'good') + '">' + escapeHtml(String(r[2])) + '</span></div>'
+      '<span class="t-value ' + (r[3] ? 'warn' : 'good') + '"' + (r[3] ? ' data-tip="≥50% precipitation — an indoor or mixed alternative is advised"' : '') + '>' + escapeHtml(String(r[2])) + '</span></div>'
     ).join('') + '</div>' +
     (imgs && imgs.length ? '<div class="t-credit">📷 ' + (imgs[0].indexOf('wikimedia') !== -1 ? 'photo: Wikimedia Commons' : 'stock photo: Picsum') + '</div>' : '') +
     '</div></div>';
@@ -745,6 +798,7 @@ async function handleSend(text) {
     }
     hideTyping();
     addMsg(html, 'assistant');
+    speakText(data.reply);
 
     // Pipeline trace completion
     addStep('🧠', 'LLM ' + (meta.model || ''), (chatMs / 1000).toFixed(1) + 's · JSON mode', 'llm');
@@ -842,6 +896,10 @@ async function pollAgentRun(runId) {
         agentsPoll = null;
         runAgentsBtn.disabled = false;
         runAgentsBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Run again';
+        const secs = Math.round(((new Date(run.finishedAt || Date.now()) - new Date(run.startedAt)) / 1000) || 0);
+        toast(run.status === 'done'
+          ? '✅ Pipeline finished in ' + secs + 's — see the Agents tab'
+          : '⚠️ Pipeline failed — see the Agents tab', run.status === 'done' ? 'ok' : 'err');
       }
     } catch (e) {
       clearInterval(agentsPoll);
@@ -886,6 +944,97 @@ async function startAgentRun() {
 }
 
 runAgentsBtn.addEventListener('click', startAgentRun);
+
+// ═══ Toast notifications ═══
+function toast(msg, kind) {
+  if (!window.Toastify) return;
+  const bg = kind === 'err' ? 'linear-gradient(135deg,#dc2626,#b91c1c)' :
+             kind === 'info' ? 'linear-gradient(135deg,#0ea5c4,#0f8f7a)' :
+             'linear-gradient(135deg,#115e6b,#0f8f7a)';
+  Toastify({
+    text: msg,
+    duration: 3800,
+    gravity: 'bottom',
+    position: 'right',
+    style: { background: bg, borderRadius: '10px', fontSize: '.75rem', fontFamily: 'Inter,sans-serif', boxShadow: '0 6px 18px rgba(0,0,0,.18)' }
+  }).showToast();
+}
+
+// ═══ Spoken replies (Web Speech API) ═══
+let speakOn = localStorage.getItem('awt-speak') === '1';
+const speakBtn = document.getElementById('speakBtn');
+
+function speakText(text) {
+  if (!speakOn || !('speechSynthesis' in window) || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g, ' ').slice(0, 400));
+  u.rate = 1.05;
+  u.pitch = 1;
+  const v = speechSynthesis.getVoices().find(x => x.lang && x.lang.startsWith('en'));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+
+function renderSpeakBtn() {
+  speakBtn.classList.toggle('on', speakOn);
+  speakBtn.innerHTML = '<i class="fa-solid fa-volume-' + (speakOn ? 'high' : 'xmark') + '"></i>';
+}
+renderSpeakBtn();
+speakBtn.addEventListener('click', () => {
+  speakOn = !speakOn;
+  localStorage.setItem('awt-speak', speakOn ? '1' : '0');
+  renderSpeakBtn();
+  if (!speakOn) speechSynthesis.cancel();
+});
+
+// ═══ Voice input (Web Speech API) ═══
+const micBtn = document.getElementById('micBtn');
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+if (!SR) micBtn.style.display = 'none';
+micBtn.addEventListener('click', () => {
+  if (!SR) return;
+  if (recognition) { recognition.stop(); return; }
+  recognition = new SR();
+  recognition.lang = 'en-IE';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  micBtn.classList.add('listening');
+  micBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
+  recognition.onresult = e => {
+    const t = e.results[0][0].transcript;
+    input.value = t;
+    sendBtn.click();
+  };
+  recognition.onend = () => {
+    recognition = null;
+    micBtn.classList.remove('listening');
+    micBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+  };
+  recognition.onerror = () => {
+    recognition = null;
+    micBtn.classList.remove('listening');
+    micBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+  };
+  recognition.start();
+});
+
+// ═══ Dark mode toggle ═══
+const themeBtn = document.getElementById('themeBtn');
+function applyTheme(dark) {
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  localStorage.setItem('awt-theme', dark ? 'dark' : 'light');
+  themeBtn.innerHTML = dark ? '<i class="fa-solid fa-sun"></i> Light mode' : '<i class="fa-solid fa-moon"></i> Dark mode';
+}
+applyTheme(document.documentElement.dataset.theme === 'dark');
+themeBtn.addEventListener('click', () => applyTheme(document.documentElement.dataset.theme !== 'dark'));
+
+// Tooltips on always-present elements
+if (window.tippy) {
+  document.querySelectorAll('[data-tip]').forEach(el => {
+    tippy(el, { content: el.dataset.tip, arrow: true, delay: [180, 0], allowHTML: false });
+  });
+}
 
 // Keep the free-tier backend warm: ping on load + every 6 min while the page is open
 fetch(BACKEND_URL + '/api/health').catch(() => {});
