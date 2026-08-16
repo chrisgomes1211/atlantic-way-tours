@@ -10,6 +10,10 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js"></script>
 <script>
   if (localStorage.getItem('awt-theme') === 'dark' ||
       (!localStorage.getItem('awt-theme') && matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -151,6 +155,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 /* Inline Leaflet map strip + distance chip */
 .t-map{position:relative;border-top:1px solid var(--line-soft);z-index:0}
 .t-map-js{width:100%;height:120px;background:var(--chip-bg);position:relative;z-index:0}
+.t-map iframe{width:100%;height:120px;border:0;display:block;background:var(--chip-bg)}
 .t-map-js .leaflet-control-attribution{font-size:8px}
 .t-dist{position:absolute;top:8px;left:8px;z-index:1000;background:rgba(13,53,45,.88);color:#fff;font-size:.64rem;font-weight:700;padding:5px 11px;border-radius:100px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.28);font-family:var(--sans);white-space:nowrap}
 .t-dist.muted{background:rgba(255,255,255,.94);color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.16)}
@@ -673,10 +678,10 @@ function tourCard(t, coords) {
   ].filter(r => r[2] !== undefined && r[2] !== null && r[2] !== '');
   let imageHtml;
   if (imgs && imgs.length) {
-    const carousel = imgs.length > 1;
+    const carousel = imgs.length > 1 && window.Swiper;
     imageHtml = '<div class="t-img"><div class="t-car' + (carousel ? ' swiper' : '') + '">' +
       (carousel ? '<div class="swiper-wrapper">' : '') +
-      imgs.map(function(u) {
+      imgs.slice(0, carousel ? imgs.length : 1).map(function(u) {
         const slide = '<img src="' + u + '" alt="' + escapeHtml(t.name) + '" loading="lazy" onerror="imgFail(this)">';
         return carousel ? '<div class="swiper-slide">' + slide + '</div>' : slide;
       }).join('') +
@@ -690,8 +695,11 @@ function tourCard(t, coords) {
     const chip = coords.distText
       ? '<span class="t-dist"><i class="fa-solid fa-location-arrow"></i> ' + escapeHtml(coords.distText) + '</span>'
       : '<span class="t-dist muted"><i class="fa-solid fa-location-dot"></i> ' + (geoState === 'denied' ? 'Location off — no distance' : 'Enable location for distance') + '</span>';
-    mapHtml = '<div class="t-map">' + chip +
-      '<div class="t-map-js" data-lat="' + coords.lat + '" data-lon="' + coords.lon + '" data-name="' + escapeHtml(t.name) + '" data-line="' + (coords.distText ? '1' : '0') + '"></div></div>';
+    mapHtml = window.L
+      ? '<div class="t-map">' + chip +
+        '<div class="t-map-js" data-lat="' + coords.lat + '" data-lon="' + coords.lon + '" data-name="' + escapeHtml(t.name) + '" data-line="' + (coords.distText ? '1' : '0') + '"></div></div>'
+      : '<div class="t-map">' + chip +
+        '<iframe src="https://maps.google.com/maps?q=' + coords.lat + ',' + coords.lon + '&z=12&output=embed" loading="lazy" title="Map: ' + escapeHtml(t.name) + '"></iframe></div>';
   }
   return '<div class="tour-card animate__animated animate__zoomIn">' + imageHtml + mapHtml +
     '<div class="t-card-main">' +
