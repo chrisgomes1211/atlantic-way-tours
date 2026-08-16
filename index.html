@@ -516,6 +516,10 @@ const TOUR_IMAGES = {
   ]
 };
 
+function imgFail(el) {
+  el.outerHTML = '<div class="t-img-fallback"><i class="fa-solid fa-location-dot"></i></div>';
+}
+
 function imageFor(name) {
   if (!name) return null;
   const n = String(name).toLowerCase();
@@ -524,7 +528,9 @@ function imageFor(name) {
   for (const k in TOUR_IMAGES) {
     if (k.startsWith(first) || n.startsWith(k.split(' ')[0])) return TOUR_IMAGES[k];
   }
-  return null;
+  // No Commons photo for this tour — use a deterministic stock placeholder
+  const seed = n.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'tour';
+  return ['https://picsum.photos/seed/awt-' + seed + '/800/450'];
 }
 
 // Wire up a carousel: arrows, dots, swipe
@@ -612,7 +618,7 @@ function tourCard(t, coords) {
     const carousel = imgs.length > 1;
     imageHtml = '<div class="t-img"><div class="t-car">' +
       '<div class="t-slides">' + imgs.map(function(u) {
-        return '<img src="' + u + '" alt="' + escapeHtml(t.name) + '" loading="lazy" onerror="this.style.display=\'none\'">';
+        return '<img src="' + u + '" alt="' + escapeHtml(t.name) + '" loading="lazy" onerror="imgFail(this)">';
       }).join('') + '</div>' +
       (carousel
         ? '<button class="t-nav t-prev" aria-label="Previous photo">‹</button>' +
@@ -642,7 +648,7 @@ function tourCard(t, coords) {
       '<div class="t-row"><span class="t-label"><span>' + r[0] + '</span>' + r[1] + '</span>' +
       '<span class="t-value ' + (r[3] ? 'warn' : 'good') + '">' + escapeHtml(String(r[2])) + '</span></div>'
     ).join('') + '</div>' +
-    (imgs && imgs.length ? '<div class="t-credit">📷 photo: Wikimedia Commons</div>' : '') +
+    (imgs && imgs.length ? '<div class="t-credit">📷 ' + (imgs[0].indexOf('wikimedia') !== -1 ? 'photo: Wikimedia Commons' : 'stock photo: Picsum') + '</div>' : '') +
     '</div></div>';
 }
 
@@ -677,7 +683,7 @@ async function browserWeather(tours) {
 
 // ═══ SEND HANDLER — live backend (structured cards + tools trace) ═══
 // Explicit commands that launch the 5-agent pipeline instead of the chat LLM
-const PIPELINE_TRIGGERS = /\b(run (the )?(pipeline|agents|analysis|full analysis|agent pipeline)|analyze (our|the) business)\b/i;
+const PIPELINE_TRIGGERS = /\b(run (the )?(pipeline|agents?|analysis|full analysis|agent pipeline|5[- ]?agents?)|start the pipeline|analyze (our|the) business|orchestrate)\b/i;
 
 async function handleSend(text) {
   const query = text.trim();
@@ -827,7 +833,7 @@ let agentsPoll = null;
 async function pollAgentRun(runId) {
   const tick = async () => {
     try {
-      const sRes = await fetchWithTimeout(BACKEND_URL + '/api/orchestrate/status?runId=' + encodeURIComponent(runId), {}, 30000);
+      const sRes = await fetchWithTimeout(BACKEND_URL + '/api/orchestrate/status?runId=' + encodeURIComponent(runId), {}, 60000);
       if (!sRes.ok) throw new Error('status HTTP ' + sRes.status);
       const run = await sRes.json();
       renderAgentRun(run);
@@ -852,11 +858,13 @@ async function pollAgentRun(runId) {
 async function startAgentRun() {
   runAgentsBtn.disabled = true;
   runAgentsBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Starting...';
-  agentsSteps.innerHTML = '<div class="agents-empty"><p>Gathering live data + starting the 5-agent organisation…</p></div>';
+  agentsSteps.innerHTML = '<div class="agents-empty"><p>Warming up the backend + gathering live data…</p></div>';
   try {
+    // Warm up the free-tier backend first — cold starts can take ~60s
+    await fetchWithTimeout(BACKEND_URL + '/api/health', {}, 90000).catch(() => {});
     let clientWeather = null;
     try {
-      const tRes = await fetchWithTimeout(BACKEND_URL + '/api/tours', {}, 30000);
+      const tRes = await fetchWithTimeout(BACKEND_URL + '/api/tours', {}, 60000);
       if (tRes.ok) {
         const tt = (await tRes.json()).tours;
         clientWeather = await browserWeather(tt);
@@ -866,7 +874,7 @@ async function startAgentRun() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ weather: clientWeather || {} })
-    }, 30000);
+    }, 60000);
     if (!startRes.ok) throw new Error('start HTTP ' + startRes.status);
     const { runId } = await startRes.json();
     await pollAgentRun(runId);
