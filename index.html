@@ -106,6 +106,12 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .tour-card .t-row .t-value.warn{color:#b45309}
 .tour-card .t-row .t-value.good{color:var(--accent)}
 .t-credit{font-family:var(--mono);font-size:.58rem;color:var(--dim);padding:4px 15px 8px}
+
+/* Inline Google map strip + distance chip */
+.t-map{position:relative;border-top:1px solid var(--line-soft)}
+.t-map iframe{width:100%;height:120px;border:0;display:block;background:var(--chip-bg)}
+.t-dist{position:absolute;top:8px;left:8px;z-index:2;background:rgba(13,53,45,.88);color:#fff;font-size:.64rem;font-weight:700;padding:5px 11px;border-radius:100px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.28);font-family:var(--sans);white-space:nowrap}
+.t-dist.muted{background:rgba(255,255,255,.94);color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.16)}
 .trace{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin:2px 2px 0;padding-left:2px}
 .trace b{font-weight:500;color:#7d948d}
 
@@ -497,8 +503,46 @@ function initCarousels(root) {
   });
 }
 
+// ─── User location & straight-line distance (free, browser-side) ───
+let userPos = null;
+let geoState = 'idle';
+
+function getUserPos() {
+  return new Promise(res => {
+    if (userPos) return res(userPos);
+    if (!navigator.geolocation) { geoState = 'denied'; return res(null); }
+    navigator.geolocation.getCurrentPosition(
+      p => { userPos = { lat: p.coords.latitude, lon: p.coords.longitude }; geoState = 'ok'; res(userPos); },
+      () => { geoState = 'denied'; res(null); },
+      { timeout: 10000, maximumAge: 600000 }
+    );
+  });
+}
+
+function haversineKm(aLat, aLon, bLat, bLon) {
+  const R = 6371;
+  const dLat = (bLat - aLat) * Math.PI / 180;
+  const dLon = (bLon - aLon) * Math.PI / 180;
+  const s = Math.sin(dLat / 2) ** 2 +
+    Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+function coordsFor(name, tourByKey) {
+  if (!name) return null;
+  const n = String(name).toLowerCase();
+  let t = tourByKey.get(n) || tourByKey.get(n.split(' ')[0]);
+  if (!t) {
+    for (const [k, v] of tourByKey) {
+      if (k.startsWith(n.split(' ')[0]) || n.startsWith(k.split(' ')[0])) { t = v; break; }
+    }
+  }
+  if (!t || isNaN(parseFloat(t.latitude))) return null;
+  return { lat: parseFloat(t.latitude), lon: parseFloat(t.longitude) };
+}
+
 // Card renderer fed by the backend's structured tour data
-function tourCard(t) {
+function tourCard(t, coords) {
   const weatherNum = t.weather_today ? parseInt(String(t.weather_today).match(/\d+/), 10) : NaN;
   const warn = !isNaN(weatherNum) && weatherNum >= 50;
   const imgs = imageFor(t.name);
@@ -528,7 +572,16 @@ function tourCard(t) {
   } else {
     imageHtml = '<div class="t-img"><div class="t-img-fallback"><i class="fa-solid fa-location-dot"></i></div></div>';
   }
-  return '<div class="tour-card">' + imageHtml +
+  let mapHtml = '';
+  if (coords) {
+    const chip = coords.distText
+      ? '<span class="t-dist"><i class="fa-solid fa-location-arrow"></i> ' + escapeHtml(coords.distText) + '</span>'
+      : '<span class="t-dist muted"><i class="fa-solid fa-location-dot"></i> ' + (geoState === 'denied' ? 'Location off — no distance' : 'Enable location for distance') + '</span>';
+    mapHtml = '<div class="t-map">' + chip +
+      '<iframe src="https://maps.google.com/maps?q=' + coords.lat + ',' + coords.lon + '&z=12&output=embed" ' +
+      'loading="lazy" title="Map: ' + escapeHtml(t.name) + '"></iframe></div>';
+  }
+  return '<div class="tour-card">' + imageHtml + mapHtml +
     '<div class="t-card-main">' +
     '<div class="t-head"><div class="t-icon"><i class="fa-solid fa-umbrella-beach"></i></div>' +
     '<div><div class="t-title">Tour Details</div><div class="t-name">' + escapeHtml(t.name || '') + '</div></div></div>' +
@@ -600,7 +653,22 @@ async function handleSend(text) {
 
     let html = '<div class="plain">' + escapeHtml(data.reply || 'No reply received.') + '</div>';
     if (data.tours && data.tours.length) {
-      html = data.tours.map(t => tourCard(t)).join('') + html;
+      const tourByKey = new Map(tours.map(x => [String(x.name || '').toLowerCase(), x]));
+      const pos = await getUserPos();
+      const cards = data.tours.map(card => {
+        const c = coordsFor(card.name, tourByKey);
+        let extra = null;
+        if (c) {
+          let distText = null;
+          if (pos) {
+            const km = haversineKm(pos.lat, pos.lon, c.lat, c.lon);
+            distText = km < 1 ? Math.round(km * 1000) + ' m away' : km.toFixed(1) + ' km away';
+          }
+          extra = { lat: c.lat, lon: c.lon, distText };
+        }
+        return tourCard(card, extra);
+      });
+      html = cards.join('') + html;
       const tools = (data.tools && data.tools.length) ? data.tools.join(', ') : 'search_catalogue';
       html += '<div class="trace">tools used: <b>' + escapeHtml(tools) + '</b></div>';
     }
