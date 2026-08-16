@@ -176,6 +176,40 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .trace-details details[open] summary::after{transform:rotate(180deg)}
 .trace-details pre{background:#0d2b24;color:#cfe3dc;font-family:var(--mono);font-size:.62rem;line-height:1.5;padding:10px 12px;margin:0;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-word}
 
+/* Trace tabs (chat | agents) */
+.tabbar{display:flex;gap:4px;padding:10px 14px 0;background:var(--sand);border-bottom:1px solid var(--line-soft)}
+.tab{flex:1;font-family:var(--sans);font-size:.72rem;font-weight:700;color:var(--muted);background:transparent;border:none;border-bottom:2px solid transparent;padding:8px 4px;cursor:pointer;border-radius:6px 6px 0 0;transition:color .18s,border-color .18s}
+.tab:hover{color:var(--accent)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.pane{flex:1;min-height:0;display:flex;flex-direction:column}
+
+/* Agents pipeline view */
+.agents-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px 10px;background:var(--sand)}
+.agents-hint{font-size:.6rem;color:var(--dim);font-family:var(--mono)}
+.run-btn{display:inline-flex;align-items:center;gap:6px;background:var(--grad);color:#fff;border:none;border-radius:100px;padding:7px 14px;font-size:.7rem;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(27,107,90,.3);transition:transform .15s,opacity .15s;font-family:var(--sans)}
+.run-btn:hover{transform:translateY(-1px)}
+.run-btn:disabled{opacity:.5;cursor:default;transform:none}
+.agents-body{flex:1;min-height:0;overflow-y:auto;padding:12px 14px 16px;display:flex;flex-direction:column;gap:6px;background:var(--sand);font-family:var(--mono);font-size:.7rem}
+.agents-body::-webkit-scrollbar{width:5px}
+.agents-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.agent-card{border:1px solid var(--line-soft);border-radius:12px;background:var(--surface);overflow:hidden;animation:fadeUp .3s ease}
+.agent-card .a-head{display:flex;align-items:center;gap:9px;padding:10px 12px}
+.agent-card .a-num{width:24px;height:24px;border-radius:8px;background:var(--grad-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.66rem;font-weight:800;flex-shrink:0}
+.agent-card .a-name{font-weight:700;font-family:var(--sans);font-size:.78rem;color:var(--ink)}
+.agent-card .a-file{font-size:.58rem;color:var(--dim);font-family:var(--mono)}
+.agent-card .a-status{margin-left:auto;font-size:.58rem;font-weight:800;padding:4px 9px;border-radius:100px;white-space:nowrap;font-family:var(--sans)}
+.agent-card .a-status.running{background:#fef3c7;color:#92400e}
+.agent-card .a-status.done{background:#d1fae5;color:#065f46}
+.agent-card .a-status.error{background:#fee2e2;color:#991b1b}
+.agent-card details{border-top:1px solid var(--line-soft)}
+.agent-card summary{cursor:pointer;font-family:var(--sans);font-size:.66rem;font-weight:700;color:var(--accent);padding:7px 12px;list-style:none;display:flex;align-items:center;justify-content:space-between}
+.agent-card summary::after{content:'▾';font-size:.6rem;color:var(--dim);transition:transform .2s}
+.agent-card details[open] summary::after{transform:rotate(180deg)}
+.agent-card pre{background:#0d2b24;color:#cfe3dc;font-family:var(--mono);font-size:.6rem;line-height:1.5;padding:9px 12px;margin:0;max-height:170px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+.agents-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:160px;color:var(--dim);text-align:center;gap:8px}
+.agents-empty svg{width:32px;height:32px;opacity:.3}
+.agents-empty p{font-size:.74rem;max-width:260px;line-height:1.5;font-family:var(--sans)}
+
 /* Fixed disclosure */
 .disclosure{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;background:rgba(16,52,46,.92);color:#cfe3dc;font-size:.68rem;padding:8px 18px;border-radius:100px;box-shadow:var(--shadow-lg);text-align:center;white-space:nowrap;z-index:50;display:flex;align-items:center;gap:7px;max-width:94vw}
 .disclosure i{color:#d9b36a;font-size:.72rem}
@@ -288,15 +322,33 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
       </div>
       <div class="t-pill"><span class="dot"></span>live</div>
     </div>
-    <div class="trace-body" id="trace">
-      <div class="trace-empty" id="traceEmpty">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4L30 16L44 18L34 28L36 42L24 35L12 42L14 28L4 18L18 16L24 4Z"/><circle cx="24" cy="24" r="3"/></svg>
-        <p>Send a message to watch the pipeline: live data → system prompt → LLM → structured cards.</p>
+    <div class="tabbar">
+      <button class="tab active" data-tab="chat">Chat trace</button>
+      <button class="tab" data-tab="agents">Agents pipeline</button>
+    </div>
+    <div class="pane" id="tracePane">
+      <div class="trace-body" id="trace">
+        <div class="trace-empty" id="traceEmpty">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4L30 16L44 18L34 28L36 42L24 35L12 42L14 28L4 18L18 16L24 4Z"/><circle cx="24" cy="24" r="3"/></svg>
+          <p>Send a message to watch the pipeline: live data → system prompt → LLM → structured cards.</p>
+        </div>
+      </div>
+      <div class="trace-details" id="traceDetails" style="display:none">
+        <details id="promptBox"><summary>View system prompt</summary><pre id="promptPre"></pre></details>
+        <details id="rawBox"><summary>View raw model output</summary><pre id="rawPre"></pre></details>
       </div>
     </div>
-    <div class="trace-details" id="traceDetails" style="display:none">
-      <details id="promptBox"><summary>View system prompt</summary><pre id="promptPre"></pre></details>
-      <details id="rawBox"><summary>View raw model output</summary><pre id="rawPre"></pre></details>
+    <div class="pane" id="agentsPane" style="display:none">
+      <div class="agents-actions">
+        <span class="agents-hint" id="agentsHint">5-agent organisation · gpt-4o-mini</span>
+        <button class="run-btn" id="runAgents"><i class="fa-solid fa-play"></i> Run pipeline</button>
+      </div>
+      <div class="agents-body" id="agentsSteps">
+        <div class="agents-empty">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4L30 16L44 18L34 28L36 42L24 35L12 42L14 28L4 18L18 16L24 4Z"/><circle cx="24" cy="24" r="3"/></svg>
+          <p>Run the 5-agent organisation to watch it live: Researcher → Designer → Maker → Communicator → Manager.</p>
+        </div>
+      </div>
     </div>
   </section>
 </div>
@@ -712,6 +764,90 @@ document.querySelectorAll('.chip').forEach(el => {
     input.value = el.dataset.cmd;
     sendBtn.click();
   });
+});
+
+// ═══ AGENTS PIPELINE TAB — run the 5-agent organisation live ═══
+const tracePaneEl = document.getElementById('tracePane');
+const agentsPaneEl = document.getElementById('agentsPane');
+const agentsSteps = document.getElementById('agentsSteps');
+const runAgentsBtn = document.getElementById('runAgents');
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+    const isAgents = tab.dataset.tab === 'agents';
+    agentsPaneEl.style.display = isAgents ? 'flex' : 'none';
+    tracePaneEl.style.display = isAgents ? 'none' : 'flex';
+  });
+});
+
+function agentStatusText(s) {
+  if (s.status === 'running') return '⏳ running';
+  if (s.status === 'error') return '❌ error';
+  return '✅ ' + (s.llmMs ? (s.llmMs / 1000).toFixed(1) + 's' : 'done');
+}
+
+function renderAgentRun(run) {
+  agentsSteps.innerHTML = run.steps.map(s => {
+    const isData = s.agent === 'live-data';
+    return '<div class="agent-card"><div class="a-head"><div class="a-num">' + s.step + '</div>' +
+      '<div><div class="a-name">' + escapeHtml(s.label || s.agent) + '</div>' +
+      '<div class="a-file">' + (isData ? 'tours + forecast' : escapeHtml(s.persona ? s.persona + ' · ' + s.agent : s.agent)) + '</div></div>' +
+      '<div class="a-status ' + s.status + '">' + agentStatusText(s) + '</div></div>' +
+      (isData
+        ? (s.detail ? '<details><summary>Detail</summary><pre>' + escapeHtml(s.detail) + '</pre></details>' : '')
+        : '<details><summary>System prompt</summary><pre>' + escapeHtml(s.system || '(pending)') + '</pre></details>' +
+          '<details><summary>Output</summary><pre>' + (s.output ? escapeHtml(s.output) : s.status === 'error' ? escapeHtml(s.detail || 'failed') : '(pending)') + '</pre></details>') +
+      '</div>';
+  }).join('');
+  agentsSteps.scrollTop = agentsSteps.scrollHeight;
+}
+
+let agentsPoll = null;
+
+async function pollAgentRun(runId) {
+  const tick = async () => {
+    try {
+      const sRes = await fetchWithTimeout(BACKEND_URL + '/api/orchestrate/status?runId=' + encodeURIComponent(runId), {}, 30000);
+      if (!sRes.ok) throw new Error('status HTTP ' + sRes.status);
+      const run = await sRes.json();
+      renderAgentRun(run);
+      if (run.status === 'done' || run.status === 'error') {
+        clearInterval(agentsPoll);
+        agentsPoll = null;
+        runAgentsBtn.disabled = false;
+        runAgentsBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Run again';
+      }
+    } catch (e) {
+      clearInterval(agentsPoll);
+      agentsPoll = null;
+      agentsSteps.innerHTML = '<div class="agents-empty"><p>⚠️ ' + escapeHtml('Status poll failed (' + e.message.slice(0, 60) + ')') + '</p></div>';
+      runAgentsBtn.disabled = false;
+      runAgentsBtn.innerHTML = '<i class="fa-solid fa-play"></i> Run pipeline';
+    }
+  };
+  await tick();
+  agentsPoll = setInterval(tick, 2000);
+}
+
+runAgentsBtn.addEventListener('click', async () => {
+  runAgentsBtn.disabled = true;
+  runAgentsBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
+  agentsSteps.innerHTML = '<div class="agents-empty"><p>Starting the 5-agent organisation…</p></div>';
+  try {
+    const startRes = await fetchWithTimeout(BACKEND_URL + '/api/orchestrate/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    }, 30000);
+    if (!startRes.ok) throw new Error('start HTTP ' + startRes.status);
+    const { runId } = await startRes.json();
+    await pollAgentRun(runId);
+  } catch (e) {
+    agentsSteps.innerHTML = '<div class="agents-empty"><p>⚠️ ' + escapeHtml('Backend unreachable (' + e.message.slice(0, 60) + '). Free services sleep — wait a moment and try again.') + '</p></div>';
+    runAgentsBtn.disabled = false;
+    runAgentsBtn.innerHTML = '<i class="fa-solid fa-play"></i> Run pipeline';
+  }
 });
 
 // Keep the free-tier backend warm: ping on load + every 6 min while the page is open

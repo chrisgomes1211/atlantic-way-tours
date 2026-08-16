@@ -211,51 +211,132 @@ async function buildLiveDataPackage() {
   return `## LIVE DATA PACKAGE\nTours fetched live: ${tours.length}\nWeather locations: ${Object.keys(weather).length}\n\n${byLoc.join('\n')}`;
 }
 
-app.post('/api/orchestrate', async (req, res) => {
+// ─── Agent pipeline (shared runner + run store) ───
+const runs = new Map();
+
+function personaFrom(system) {
+  const m = system.match(/## Identity\s*\n\s*You are \*\*([^*]+)\*\*/i);
+  return m ? m[1].trim() : '';
+}
+
+function labelFrom(system, file) {
+  const m = system.match(/^# AGENT \d+[^\n]*—\s*(.+)$/im) || system.match(/^# AGENT \d+[^\n]*-\s*(.+)$/im);
+  if (!m) return file.replace(/\.md$/, '');
+  const label = m[1].trim();
+  return label.charAt(0) + label.slice(1).toLowerCase();
+}
+
+async function readAgentFiles() {
+  let files;
   try {
-    let files;
-    try {
-      files = (await readdir(AGENTS_DIR)).filter(f => f.endsWith('.md')).sort();
-    } catch {
-      return res.status(404).json({ error: 'No agents found. Create the /agents markdown files first.' });
-    }
+    files = (await readdir(AGENTS_DIR)).filter(f => f.endsWith('.md')).sort();
+  } catch {
+    return null;
+  }
+  return files.length ? files : null;
+}
 
-    if (files.length === 0) {
-      return res.status(404).json({ error: 'No agents found. Create the /agents markdown files first.' });
-    }
-
-    const kickoff = req.body?.prompt || 'Run the full analysis for Atlantic Way Tours: weather-driven revenue loss and the weather-adaptive tour recommender opportunity.';
-    const log = [];
-    let previousOutput = kickoff;
-
+async function runPipeline(run) {
+  try {
+    let previousOutput = run.kickoff;
     try {
       const liveData = await buildLiveDataPackage();
-      previousOutput = kickoff + '\n\n' + liveData;
-      log.push({ step: 0, agent: 'live-data', status: 'done', detail: liveData.split('\n')[2] });
+      previousOutput = run.kickoff + '\n\n' + liveData;
+      run.steps.push({ step: 0, agent: 'live-data', label: 'Live data', status: 'done', detail: liveData.split('\n')[2], output: liveData });
     } catch (e) {
-      log.push({ step: 0, agent: 'live-data', status: 'error', detail: e.message.slice(0, 120) });
+      run.steps.push({ step: 0, agent: 'live-data', label: 'Live data', status: 'error', detail: e.message.slice(0, 120), output: '' });
     }
 
-    for (const file of files) {
+    for (let i = 0; i < run.agents.length; i++) {
+      const file = run.agents[i];
       const system = await readFile(path.join(AGENTS_DIR, file), 'utf8');
-      log.push({ step: files.indexOf(file) + 1, agent: file, status: 'running' });
+      const entry = {
+        step: run.steps.length,
+        agent: file,
+        label: labelFrom(system, file),
+        persona: personaFrom(system),
+        status: 'running',
+        system,
+        handoffTo: run.agents[i + 1] || null
+      };
+      run.steps.push(entry);
+      const t0 = Date.now();
       try {
         const reply = await callOpenAI(system, previousOutput);
+        entry.llmMs = Date.now() - t0;
+        entry.output = reply;
+        entry.status = 'done';
         previousOutput = reply;
-        log.push({
-          step: files.indexOf(file) + 1,
-          agent: file,
-          status: 'done',
-          handoffTo: files[files.indexOf(file) + 1] || null,
-          output: reply
-        });
       } catch (e) {
-        log.push({ step: files.indexOf(file) + 1, agent: file, status: 'error', detail: e.message });
-        return res.status(502).json({ error: `Agent ${file} failed`, log });
+        entry.llmMs = Date.now() - t0;
+        entry.detail = e.message;
+        entry.status = 'error';
+        run.status = 'error';
+        return;
       }
     }
+    run.status = 'done';
+  } catch (e) {
+    run.status = 'error';
+    run.error = e.message;
+  } finally {
+    run.finishedAt = new Date().toISOString();
+  }
+}
 
-    res.json({ status: 'complete', log });
+app.get('/api/agents', async (_req, res) => {
+  try {
+    const files = await readAgentFiles();
+    if (!files) return res.status(404).json({ error: 'No agents found. Create the /agents markdown files first.' });
+    const agents = [];
+    for (const f of files) {
+      const system = await readFile(path.join(AGENTS_DIR, f), 'utf8');
+      agents.push({ file: f, label: labelFrom(system, f), persona: personaFrom(system), system, chars: system.length });
+    }
+    res.json({ count: agents.length, agents });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/orchestrate/start', async (req, res) => {
+  try {
+    const files = await readAgentFiles();
+    if (!files) return res.status(404).json({ error: 'No agents found. Create the /agents markdown files first.' });
+    const runId = Math.random().toString(36).slice(2, 10);
+    const run = {
+      id: runId,
+      status: 'running',
+      startedAt: new Date().toISOString(),
+      kickoff: req.body?.prompt || 'Run the full analysis for Atlantic Way Tours: weather-driven revenue loss and the weather-adaptive tour recommender opportunity.',
+      agents: files,
+      steps: []
+    };
+    runs.set(runId, run);
+    runPipeline(run);
+    res.json({ runId, status: 'running' });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/orchestrate/status', (req, res) => {
+  const run = runs.get(String(req.query.runId || ''));
+  if (!run) return res.status(404).json({ error: 'Unknown runId' });
+  res.json(run);
+});
+
+app.post('/api/orchestrate', async (req, res) => {
+  try {
+    const files = await readAgentFiles();
+    if (!files) return res.status(404).json({ error: 'No agents found. Create the /agents markdown files first.' });
+
+    const kickoff = req.body?.prompt || 'Run the full analysis for Atlantic Way Tours: weather-driven revenue loss and the weather-adaptive tour recommender opportunity.';
+    const runId = Math.random().toString(36).slice(2, 10);
+    const run = { id: runId, status: 'running', startedAt: new Date().toISOString(), kickoff, agents: files, steps: [] };
+    runs.set(runId, run);
+    await runPipeline(run);
+    res.json({ status: run.status, log: run.steps });
   } catch (err) {
     console.error('Orchestrate error:', err);
     res.status(500).json({ error: 'Internal server error' });
