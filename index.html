@@ -953,6 +953,14 @@ async function startAgentRun() {
 
 runAgentsBtn.addEventListener('click', startAgentRun);
 
+// Auto-run the pipeline on page load so the Agents tab is always ready
+let autoRan = false;
+setTimeout(() => {
+  if (autoRan || agentsPoll) return;
+  autoRan = true;
+  startAgentRun();
+}, 2500);
+
 // ═══ Toast notifications ═══
 function toast(msg, kind) {
   if (!window.Toastify) return;
