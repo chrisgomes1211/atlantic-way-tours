@@ -105,6 +105,13 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .theme-btn .bars span:nth-child(2){animation-delay:.2s}
 .theme-btn .bars span:nth-child(3){animation-delay:.4s}
 @keyframes bar{0%,100%{height:3px}50%{height:10px}}
+.amb-wrap{position:relative;align-self:flex-start;display:flex;flex-direction:column;align-items:flex-start}
+.amb-menu{position:absolute;top:calc(100% + 6px);left:0;min-width:230px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;display:none;flex-direction:column;gap:2px;z-index:60}
+.amb-wrap.open .amb-menu{display:flex;animation:fadeUp .18s ease}
+.amb-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;border:none;border-radius:8px;padding:8px 10px;font-family:var(--sans);font-size:.74rem;font-weight:600;color:var(--ink);cursor:pointer;transition:background .15s}
+.amb-item:hover{background:var(--chip-bg)}
+.amb-item.on{background:var(--grad-soft);color:var(--accent)}
+.amb-divider{height:1px;background:var(--line-soft);margin:4px 6px}
 
 /* ═══ RIGHT PANEL — chat ═══ */
 .chat-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;display:flex;flex-direction:column}
@@ -379,7 +386,16 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
     <p class="route-line">Find the best tour for today's weather and your location.</p>
     <div class="divider"></div>
     <button class="theme-btn" id="themeBtn"><i class="fa-solid fa-moon"></i> Dark mode</button>
-    <button class="theme-btn" id="ambBtn" data-tip="Ocean waves loop — click to start/stop"><span class="bars"><span></span><span></span><span></span></span> Ambient sound</button>
+    <div class="amb-wrap" id="ambWrap">
+      <button class="theme-btn" id="ambBtn" data-tip="Background sound — ocean waves or tin-whistle music"><span class="bars"><span></span><span></span><span></span></span> <span id="ambLabel">Ambient sound</span></button>
+      <div class="amb-menu" id="ambMenu">
+        <button class="amb-item" data-sound="waves">🌊 Ocean waves</button>
+        <button class="amb-item" data-sound="danny">🎶 Danny Boy — tin whistle</button>
+        <button class="amb-item" data-sound="lonesome">🎶 Lonesome low whistle</button>
+        <div class="amb-divider"></div>
+        <button class="amb-item" data-sound="off">⏹ Stop sound</button>
+      </div>
+    </div>
   </aside>
 
   <!-- MIDDLE PANEL — chat -->
@@ -456,7 +472,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 </div>
 
 <div class="disclosure">
-  <i class="fa-solid fa-circle-info"></i> You are chatting with an AI assistant (EU AI Act Article 50). Responses are AI-generated — verify important details before booking. Tour photos: Wikimedia Commons.
+  <i class="fa-solid fa-circle-info"></i> You are chatting with an AI assistant (EU AI Act Article 50). Responses are AI-generated — verify important details before booking. Tour photos: Wikimedia Commons. Ambient audio: Wikimedia Commons (CC BY-SA).
 </div>
 
 <script>
@@ -1092,10 +1108,22 @@ function applyTheme(dark) {
 applyTheme(document.documentElement.dataset.theme === 'dark');
 themeBtn.addEventListener('click', () => applyTheme(document.documentElement.dataset.theme !== 'dark'));
 
-// ═══ Ambient ocean sound (synthesised, no audio file needed) ═══
+// ═══ Ambient sound — ocean waves (synth) + tin-whistle tracks (Wikimedia Commons) ═══
+const ambWrap = document.getElementById('ambWrap');
 const ambBtn = document.getElementById('ambBtn');
-let ambientOn = localStorage.getItem('awt-ambient') === '1';
+const ambLabel = document.getElementById('ambLabel');
+const ambItems = Array.from(document.querySelectorAll('.amb-item'));
+const SOUNDS = { waves: 'Ocean waves', danny: 'Danny Boy', lonesome: 'Lonesome whistle' };
+const TRACKS = {
+  danny: 'https://upload.wikimedia.org/wikipedia/commons/6/61/Danny_Boy_tin_whistle_by_JGrandgagnage.ogg',
+  lonesome: 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Low_whistle_Lonesome_tune1-Jules_Grandgagnage.ogg'
+};
+let soundPref = localStorage.getItem('awt-sound') || 'off';
 let actx = null, ambNodes = null;
+let trackEl = null;
+const oggOK = (() => {
+  try { const a = new Audio(); return !!a.canPlayType && a.canPlayType('audio/ogg; codecs="vorbis"') !== ''; } catch { return false; }
+})();
 
 function startAmbient() {
   if (ambNodes) { actx.resume(); return; }
@@ -1141,31 +1169,101 @@ function stopAmbient() {
   if (actx) { try { actx.close(); } catch {} actx = null; }
 }
 
-function renderAmbBtn() {
-  ambBtn.classList.toggle('on', ambientOn);
+function fadeAudio(el, to, ms) {
+  clearInterval(el._fade);
+  const from = el.volume;
+  const steps = 20;
+  let i = 0;
+  el._fade = setInterval(() => {
+    i++;
+    el.volume = from + (to - from) * (i / steps);
+    if (i >= steps) {
+      clearInterval(el._fade);
+      if (to === 0) el.pause();
+    }
+  }, ms / steps);
 }
-renderAmbBtn();
-ambBtn.addEventListener('click', () => {
-  ambientOn = !ambientOn;
-  localStorage.setItem('awt-ambient', ambientOn ? '1' : '0');
-  renderAmbBtn();
-  if (ambientOn) startAmbient(); else stopAmbient();
+
+function stopTrack() {
+  if (trackEl && !trackEl.paused) fadeAudio(trackEl, 0, 350);
+}
+
+function startTrack(key) {
+  if (!trackEl) {
+    trackEl = new Audio();
+    trackEl.loop = true;
+    trackEl.addEventListener('error', () => {
+      if (soundPref === 'danny' || soundPref === 'lonesome') {
+        soundPref = 'waves';
+        localStorage.setItem('awt-sound', 'waves');
+        renderAmbUi();
+        toast('Music failed to load — switched to ocean waves', 'info');
+        startAmbient();
+      }
+    });
+  }
+  trackEl.src = TRACKS[key];
+  trackEl.volume = 0;
+  trackEl.play().then(() => fadeAudio(trackEl, 0.35, 800)).catch(() => {});
+}
+
+function applySound(choice) {
+  soundPref = choice;
+  localStorage.setItem('awt-sound', choice);
+  stopAmbient();
+  stopTrack();
+  if (choice === 'waves') startAmbient();
+  else if (choice === 'danny' || choice === 'lonesome') {
+    if (!oggOK) {
+      soundPref = 'waves';
+      localStorage.setItem('awt-sound', 'waves');
+      toast('This browser can\'t play OGG audio — switched to ocean waves', 'info');
+      startAmbient();
+    } else {
+      startTrack(choice);
+    }
+  }
+  renderAmbUi();
+}
+
+function renderAmbUi() {
+  ambBtn.classList.toggle('on', soundPref !== 'off');
+  ambLabel.textContent = soundPref === 'off' ? 'Ambient sound' : SOUNDS[soundPref];
+  ambItems.forEach(it => it.classList.toggle('on', it.dataset.sound === soundPref));
+}
+renderAmbUi();
+
+ambBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  ambWrap.classList.toggle('open');
+});
+ambItems.forEach(it => it.addEventListener('click', () => {
+  applySound(it.dataset.sound);
+  ambWrap.classList.remove('open');
+}));
+document.addEventListener('click', e => {
+  if (!ambWrap.contains(e.target)) ambWrap.classList.remove('open');
 });
 // Browsers block sound until a first gesture — honour a saved preference at that moment
-if (ambientOn) {
+if (soundPref !== 'off') {
   document.addEventListener('pointerdown', function once() {
     document.removeEventListener('pointerdown', once);
-    if (ambientOn) startAmbient();
+    if (soundPref !== 'off') applySound(soundPref);
   }, { passive: true });
   document.addEventListener('keydown', function once() {
     document.removeEventListener('keydown', once);
-    if (ambientOn) startAmbient();
+    if (soundPref !== 'off') applySound(soundPref);
   });
 }
 // Pause silently while the tab is hidden
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && actx) actx.suspend();
-  else if (!document.hidden && ambNodes) actx.resume();
+  if (document.hidden) {
+    if (actx) actx.suspend();
+    if (trackEl && !trackEl.paused) { trackEl._vis = true; trackEl.pause(); }
+  } else {
+    if (ambNodes) actx.resume();
+    if (trackEl && trackEl._vis) { trackEl._vis = false; trackEl.play().catch(() => {}); }
+  }
 });
 
 // Tooltips on always-present elements
