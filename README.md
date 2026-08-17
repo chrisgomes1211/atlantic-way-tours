@@ -7,6 +7,18 @@ A weather-smart, AI-powered tour recommender for Ireland's Wild Atlantic Way. As
 
 ---
 
+## 📸 Screenshots
+
+| Chat dashboard | Chat with tour cards | Agents pipeline |
+|---|---|---|
+| ![Dashboard](screenshots/01-dashboard-light.png) | ![Tour cards](screenshots/03-chat-cards-light.png) | ![Agents pipeline](screenshots/05-agents-pipeline.png) |
+
+| Sound picker | Dark mode |
+|---|---|
+| ![Sound picker](screenshots/02-sound-picker.png) | ![Dark mode](screenshots/04-chat-cards-dark.png) |
+
+---
+
 ## ✨ Features
 
 ### Chat assistant (`/api/chat`)
