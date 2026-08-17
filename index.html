@@ -287,6 +287,41 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
   .trace-body{flex:1;min-height:0;max-height:none;overflow-y:auto}
   .trace-details{flex:0 0 auto}
 }
+
+/* ═══ MOTION PASS — entrance, Ken Burns, waves, micro-interactions ═══
+   All GPU-friendly (transform/opacity only); disabled for reduced-motion users. */
+.app.loaded .sidebar{animation:fadeUp .5s ease both}
+.app.loaded .chat-panel{animation:fadeUp .5s ease both;animation-delay:.1s}
+.app.loaded .trace-panel{animation:fadeUp .5s ease both;animation-delay:.2s}
+.app.loaded .logo-tile{animation:pop .45s ease both;animation-delay:.25s}
+@keyframes pop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+
+.sidebar-hero img{animation:kenburns 55s ease-in-out infinite alternate;will-change:transform}
+.sidebar-hero:hover img{animation-play-state:paused}
+@keyframes kenburns{from{transform:scale(1) translate(0,0)}to{transform:scale(1.14) translate(-2.5%,2%)}}
+
+.wave-bg{position:relative;height:24px;margin:-6px 0 10px;background:var(--surface);overflow:hidden}
+.wave-bg svg{position:absolute;left:0;top:0;height:100%;width:200%;animation:wave 9s linear infinite}
+.wave-bg svg:last-child{opacity:.45;animation-duration:14s;animation-direction:reverse}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+.send-btn:active{transform:scale(.9)}
+.chip{transition:transform .18s,box-shadow .18s}
+.chip:hover{transform:translateY(-2px);box-shadow:0 5px 12px rgba(17,94,107,.18)}
+.chip:active{transform:scale(.96)}
+.input-bar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(27,107,90,.14)}
+.msg{transition:transform .18s ease}
+.msg.assistant:hover{transform:translateY(-2px)}
+
+.a-status.running{position:relative;overflow:hidden}
+.a-status.running::before{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.5) 50%,transparent 65%);transform:translateX(-100%);animation:shimmer 1.6s linear infinite}
+.a-status.running::after{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:currentColor;margin-left:6px;vertical-align:middle;animation:blink 1s ease-in-out infinite}
+@keyframes shimmer{to{transform:translateX(100%)}}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
 </style>
 </head>
 <body>
@@ -305,6 +340,10 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Ireland_Cliffs_of_Moher_BW_2025-09-11_14-27-51.jpg/960px-Ireland_Cliffs_of_Moher_BW_2025-09-11_14-27-51.jpg" alt="Cliffs of Moher">
       <div class="hero-overlay"></div>
       <div class="hero-cap">Wild Atlantic Way<small>Cliffs of Moher · Co. Clare</small></div>
+    </div>
+    <div class="wave-bg" aria-hidden="true">
+      <svg viewBox="0 0 1440 32" preserveAspectRatio="none"><path d="M0,16 C120,32 240,0 360,16 C480,32 600,0 720,16 C840,32 960,0 1080,16 C1200,32 1320,0 1440,16 L1440,32 L0,32 Z" fill="var(--accent)"/></svg>
+      <svg viewBox="0 0 1440 32" preserveAspectRatio="none"><path d="M0,22 C120,8 240,28 360,20 C480,12 600,30 720,22 C840,14 960,30 1080,22 C1200,14 1320,28 1440,20 L1440,32 L0,32 Z" fill="var(--accent)"/></svg>
     </div>
     <div class="logo-tile"><i class="fa-solid fa-compass"></i></div>
     <div>
@@ -427,6 +466,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
+document.querySelector('.app').classList.add('loaded');
 const typing = document.getElementById('typing');
 const trace = document.getElementById('trace');
 const traceEmpty = document.getElementById('traceEmpty');
