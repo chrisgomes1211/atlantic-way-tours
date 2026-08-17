@@ -99,6 +99,12 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
 .route-line{font-size:.82rem;color:var(--muted);line-height:1.5;margin-top:6px}
 .theme-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--chip-bg);border:1px solid var(--line);color:var(--accent);font-family:var(--sans);font-size:.74rem;font-weight:700;padding:9px 14px;border-radius:100px;cursor:pointer;transition:all .18s;align-self:flex-start}
 .theme-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.theme-btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.theme-btn .bars{display:inline-flex;gap:2px;align-items:flex-end;height:10px}
+.theme-btn .bars span{width:3px;background:currentColor;border-radius:2px;animation:bar 1s ease-in-out infinite}
+.theme-btn .bars span:nth-child(2){animation-delay:.2s}
+.theme-btn .bars span:nth-child(3){animation-delay:.4s}
+@keyframes bar{0%,100%{height:3px}50%{height:10px}}
 
 /* ═══ RIGHT PANEL — chat ═══ */
 .chat-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;display:flex;flex-direction:column}
@@ -334,6 +340,7 @@ h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,2.6vw,2.5rem)
     <p class="route-line">Find the best tour for today's weather and your location.</p>
     <div class="divider"></div>
     <button class="theme-btn" id="themeBtn"><i class="fa-solid fa-moon"></i> Dark mode</button>
+    <button class="theme-btn" id="ambBtn" data-tip="Ocean waves loop — click to start/stop"><span class="bars"><span></span><span></span><span></span></span> Ambient sound</button>
   </aside>
 
   <!-- MIDDLE PANEL — chat -->
@@ -1044,6 +1051,82 @@ function applyTheme(dark) {
 }
 applyTheme(document.documentElement.dataset.theme === 'dark');
 themeBtn.addEventListener('click', () => applyTheme(document.documentElement.dataset.theme !== 'dark'));
+
+// ═══ Ambient ocean sound (synthesised, no audio file needed) ═══
+const ambBtn = document.getElementById('ambBtn');
+let ambientOn = localStorage.getItem('awt-ambient') === '1';
+let actx = null, ambNodes = null;
+
+function startAmbient() {
+  if (ambNodes) { actx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  actx = new AC();
+  const master = actx.createGain();
+  master.gain.value = 0;
+  master.connect(actx.destination);
+  const len = actx.sampleRate * 4;
+  const buf = actx.createBuffer(1, len, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+    d[i] = last * 3.5;
+  }
+  const src = actx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  const lp = actx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 420;
+  const waves = actx.createGain();
+  waves.gain.value = 0.16;
+  src.connect(lp).connect(waves).connect(master);
+  const lfo = actx.createOscillator();
+  lfo.frequency.value = 0.09;
+  const lfoGain = actx.createGain();
+  lfoGain.gain.value = 0.13;
+  lfo.connect(lfoGain).connect(waves.gain);
+  lfo.start();
+  src.start();
+  master.gain.linearRampToValueAtTime(0.55, actx.currentTime + 2);
+  ambNodes = { src, lfo };
+}
+
+function stopAmbient() {
+  if (ambNodes) {
+    try { ambNodes.src.stop(); ambNodes.lfo.stop(); } catch {}
+    ambNodes = null;
+  }
+  if (actx) { try { actx.close(); } catch {} actx = null; }
+}
+
+function renderAmbBtn() {
+  ambBtn.classList.toggle('on', ambientOn);
+}
+renderAmbBtn();
+ambBtn.addEventListener('click', () => {
+  ambientOn = !ambientOn;
+  localStorage.setItem('awt-ambient', ambientOn ? '1' : '0');
+  renderAmbBtn();
+  if (ambientOn) startAmbient(); else stopAmbient();
+});
+// Browsers block sound until a first gesture — honour a saved preference at that moment
+if (ambientOn) {
+  document.addEventListener('pointerdown', function once() {
+    document.removeEventListener('pointerdown', once);
+    if (ambientOn) startAmbient();
+  }, { passive: true });
+  document.addEventListener('keydown', function once() {
+    document.removeEventListener('keydown', once);
+    if (ambientOn) startAmbient();
+  });
+}
+// Pause silently while the tab is hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && actx) actx.suspend();
+  else if (!document.hidden && ambNodes) actx.resume();
+});
 
 // Tooltips on always-present elements
 if (window.tippy) {
